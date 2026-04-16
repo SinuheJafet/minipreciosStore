@@ -1,0 +1,113 @@
+<!-- Hero Banner -->
+<section class="hero">
+  <div class="hero__slides">
+    <div class="hero__slide" *ngFor="let b of banners; let i = index" [class.active]="i === activeBanner" [class]="b.bg">
+      <div class="hero__content">
+        <h1>{{ b.title }}</h1>
+        <p>{{ b.subtitle }}</p>
+        <a [routerLink]="b.link" [queryParams]="{filter: b.filter}" class="hero__cta">{{ b.cta }}</a>
+      </div>
+      <div class="hero__img">
+        <img [src]="b.img" [alt]="b.title">
+      </div>
+    </div>
+  </div>
+  <div class="hero__dots">
+    <button *ngFor="let b of banners; let i = index" [class.active]="i === activeBanner" (click)="activeBanner = i"></button>
+  </div>
+</section>
+
+<!-- Highlights -->
+<section class="highlights">
+  <div class="highlights__container">
+    <div class="highlight-item" *ngFor="let h of highlights">
+      <span class="highlight-icon">{{ h.icon }}</span>
+      <div>
+        <strong>{{ h.title }}</strong>
+        <span>{{ h.desc }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Categories -->
+<section class="section">
+  <div class="section__container">
+    <div class="section__header">
+      <h2>Explorar categorías</h2>
+      <a routerLink="/products" class="see-all">Ver todo →</a>
+    </div>
+    <div class="categories-grid">
+      <div class="category-card" *ngFor="let cat of categories" (click)="goToCategory(cat.slug)">
+        <div class="category-card__icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <!-- smile: Higiene Oral -->
+            <circle *ngIf="cat.icon==='smile'" cx="12" cy="12" r="10"/>
+            <path *ngIf="cat.icon==='smile'" d="M8 13s1.5 2 4 2 4-2 4-2"/>
+            <line *ngIf="cat.icon==='smile'" x1="9" y1="9" x2="9.01" y2="9" stroke-width="2.5" stroke-linecap="round"/>
+            <line *ngIf="cat.icon==='smile'" x1="15" y1="9" x2="15.01" y2="9" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- droplet: Cuidado de Piel -->
+            <path *ngIf="cat.icon==='droplet'" d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            <!-- shield: Cuidado Corporal -->
+            <path *ngIf="cat.icon==='shield'" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <!-- scissors: Cuidado Capilar -->
+            <circle *ngIf="cat.icon==='scissors'" cx="6" cy="6" r="3"/>
+            <circle *ngIf="cat.icon==='scissors'" cx="6" cy="18" r="3"/>
+            <line *ngIf="cat.icon==='scissors'" x1="20" y1="4" x2="8.12" y2="15.88"/>
+            <line *ngIf="cat.icon==='scissors'" x1="14.47" y1="14.48" x2="20" y2="20"/>
+            <line *ngIf="cat.icon==='scissors'" x1="8.12" y1="8.12" x2="12" y2="12"/>
+            <!-- star: Maquillaje -->
+            <polygon *ngIf="cat.icon==='star'" points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            <!-- wind: Fragancias -->
+            <path *ngIf="cat.icon==='wind'" d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+            <!-- heart: Cuidado Bebé -->
+            <path *ngIf="cat.icon==='heart'" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </div>
+        <span class="category-card__name">{{ cat.name }}</span>
+        <span class="category-card__count">{{ cat.count }} productos</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Products -->
+<section class="section section--gray">
+  <div class="section__container">
+    <div class="section__header">
+      <h2>🔥 Productos destacados</h2>
+      <a routerLink="/products" class="see-all">Ver todos →</a>
+    </div>
+    <div class="products-grid">
+      <app-product-card *ngFor="let p of featuredProducts" [product]="p"></app-product-card>
+    </div>
+  </div>
+</section>
+
+<!-- Promo Banner -->
+<section class="promo-banner">
+  <div class="promo-banner__container">
+    <div class="promo-banner__content">
+      <span class="promo-tag">Tiempo limitado</span>
+      <h2>Hasta <strong>40% de descuento</strong> en cuidado de piel</h2>
+      <p>CeraVe, La Roche-Posay, Nivea y más marcas con precios increíbles</p>
+      <a routerLink="/products" [queryParams]="{category:'skincare'}" class="btn-white">Ver ofertas de skincare</a>
+    </div>
+    <div class="promo-banner__img">
+      <img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&q=80" alt="Skincare ofertas">
+    </div>
+  </div>
+</section>
+
+<!-- Sale Products -->
+<section class="section">
+  <div class="section__container">
+    <div class="section__header">
+      <h2>🏷️ Ofertas especiales</h2>
+      <a routerLink="/products" [queryParams]="{filter:'sale'}" class="see-all">Ver todas →</a>
+    </div>
+    <div class="products-grid">
+      <app-product-card *ngFor="let p of saleProducts" [product]="p"></app-product-card>
+    </div>
+  </div>
+</section>

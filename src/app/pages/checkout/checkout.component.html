@@ -1,0 +1,177 @@
+<!-- Order Placed -->
+<div class="order-success" *ngIf="orderPlaced">
+  <div class="order-success__card">
+    <div class="success-icon">✅</div>
+    <h1>¡Pedido confirmado!</h1>
+    <p>Tu pedido <strong>#{{ orderId }}</strong> ha sido recibido correctamente.</p>
+    <p class="hint">Recibirás un email de confirmación en breve.</p>
+    <a routerLink="/" class="btn-home">Volver al inicio</a>
+  </div>
+</div>
+
+<div class="checkout-page" *ngIf="!orderPlaced">
+  <div class="checkout-page__container">
+    <h1>Finalizar compra</h1>
+
+    <!-- Steps indicator -->
+    <div class="steps">
+      <div class="step" [class.active]="step >= 1" [class.done]="step > 1">
+        <div class="step__num">{{ step > 1 ? '✓' : '1' }}</div>
+        <span>Envío</span>
+      </div>
+      <div class="step__line" [class.done]="step > 1"></div>
+      <div class="step" [class.active]="step >= 2" [class.done]="step > 2">
+        <div class="step__num">{{ step > 2 ? '✓' : '2' }}</div>
+        <span>Pago</span>
+      </div>
+      <div class="step__line" [class.done]="step > 2"></div>
+      <div class="step" [class.active]="step >= 3">
+        <div class="step__num">3</div>
+        <span>Confirmar</span>
+      </div>
+    </div>
+
+    <div class="checkout-layout">
+      <div class="checkout-form">
+        <!-- Step 1: Shipping -->
+        <form [formGroup]="shippingForm" *ngIf="step === 1">
+          <h2>Dirección de envío</h2>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Nombre completo</label>
+              <input type="text" formControlName="fullName" placeholder="Juan García">
+              <span class="error" *ngIf="shippingForm.get('fullName')?.invalid && shippingForm.get('fullName')?.touched">Nombre requerido (min. 3 caracteres)</span>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" formControlName="email" placeholder="juan@email.com">
+              <span class="error" *ngIf="shippingForm.get('email')?.invalid && shippingForm.get('email')?.touched">Email inválido</span>
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input type="tel" formControlName="phone" placeholder="612 345 678">
+              <span class="error" *ngIf="shippingForm.get('phone')?.invalid && shippingForm.get('phone')?.touched">Teléfono inválido</span>
+            </div>
+            <div class="form-group full">
+              <label>Dirección</label>
+              <input type="text" formControlName="address" placeholder="Calle Mayor 123, 2ºB">
+              <span class="error" *ngIf="shippingForm.get('address')?.invalid && shippingForm.get('address')?.touched">Dirección requerida</span>
+            </div>
+            <div class="form-group">
+              <label>Ciudad</label>
+              <input type="text" formControlName="city" placeholder="Madrid">
+            </div>
+            <div class="form-group">
+              <label>Provincia</label>
+              <input type="text" formControlName="state" placeholder="Madrid">
+            </div>
+            <div class="form-group">
+              <label>Código postal</label>
+              <input type="text" formControlName="zipCode" placeholder="28001">
+              <span class="error" *ngIf="shippingForm.get('zipCode')?.invalid && shippingForm.get('zipCode')?.touched">CP debe tener 5 dígitos</span>
+            </div>
+            <div class="form-group">
+              <label>País</label>
+              <select formControlName="country">
+                <option value="España">España</option>
+                <option value="Portugal">Portugal</option>
+                <option value="Francia">Francia</option>
+                <option value="Italia">Italia</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-next" (click)="nextStep()" [disabled]="shippingForm.invalid">Continuar al pago →</button>
+        </form>
+
+        <!-- Step 2: Payment -->
+        <div *ngIf="step === 2">
+          <h2>Método de pago</h2>
+          <div class="payment-methods">
+            <label class="payment-method" [class.selected]="paymentMethod === 'card'">
+              <input type="radio" [(ngModel)]="paymentMethod" value="card">
+              <span>💳 Tarjeta de crédito/débito</span>
+            </label>
+            <label class="payment-method" [class.selected]="paymentMethod === 'paypal'">
+              <input type="radio" [(ngModel)]="paymentMethod" value="paypal">
+              <span>🔵 PayPal</span>
+            </label>
+            <label class="payment-method" [class.selected]="paymentMethod === 'bizum'">
+              <input type="radio" [(ngModel)]="paymentMethod" value="bizum">
+              <span>📱 Bizum</span>
+            </label>
+          </div>
+
+          <form [formGroup]="paymentForm" *ngIf="paymentMethod === 'card'" class="card-form">
+            <div class="form-group full">
+              <label>Nombre en la tarjeta</label>
+              <input type="text" formControlName="cardName" placeholder="JUAN GARCIA">
+            </div>
+            <div class="form-group full">
+              <label>Número de tarjeta</label>
+              <input type="text" formControlName="cardNumber" placeholder="1234 5678 9012 3456" maxlength="16" (input)="formatCardNumber($event)">
+              <span class="error" *ngIf="paymentForm.get('cardNumber')?.invalid && paymentForm.get('cardNumber')?.touched">Número de 16 dígitos requerido</span>
+            </div>
+            <div class="form-group">
+              <label>Expiración</label>
+              <input type="text" formControlName="expiry" placeholder="MM/AA">
+            </div>
+            <div class="form-group">
+              <label>CVV</label>
+              <input type="text" formControlName="cvv" placeholder="123" maxlength="4">
+            </div>
+          </form>
+
+          <div class="alt-payment" *ngIf="paymentMethod !== 'card'">
+            <p>Serás redirigido a {{ paymentMethod === 'paypal' ? 'PayPal' : 'Bizum' }} para completar el pago.</p>
+          </div>
+
+          <div class="step-actions">
+            <button class="btn-back" (click)="prevStep()">← Volver</button>
+            <button class="btn-next" (click)="nextStep()">Revisar pedido →</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Review -->
+        <div *ngIf="step === 3">
+          <h2>Revisar pedido</h2>
+          <div class="review-section">
+            <h3>Dirección de envío</h3>
+            <p>{{ shippingForm.value.fullName }}</p>
+            <p>{{ shippingForm.value.address }}, {{ shippingForm.value.zipCode }}</p>
+            <p>{{ shippingForm.value.city }}, {{ shippingForm.value.country }}</p>
+          </div>
+          <div class="review-section">
+            <h3>Método de pago</h3>
+            <p>{{ paymentMethod === 'card' ? '💳 Tarjeta terminada en ' + (paymentForm.value.cardNumber || '****').slice(-4) : (paymentMethod === 'paypal' ? '🔵 PayPal' : '📱 Bizum') }}</p>
+          </div>
+          <div class="step-actions">
+            <button class="btn-back" (click)="prevStep()">← Volver</button>
+            <button class="btn-order" (click)="placeOrder()">✅ Confirmar pedido</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Summary -->
+      <div class="order-summary">
+        <h2>Tu pedido</h2>
+        <div class="order-items">
+          <div class="order-item" *ngFor="let item of cart.items">
+            <img [src]="item.product.images[0]" [alt]="item.product.name">
+            <div class="order-item__info">
+              <span class="name">{{ item.product.name }}</span>
+              <span class="qty">x{{ item.quantity }}</span>
+            </div>
+            <span class="price">{{ item.product.price * item.quantity | currency:'EUR':'symbol':'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="order-totals">
+          <div><span>Subtotal</span><span>{{ cart.subtotal | currency:'EUR':'symbol':'1.2-2' }}</span></div>
+          <div *ngIf="cart.discount > 0"><span class="green">Descuento</span><span class="green">-{{ cart.subtotal * cart.discount / 100 | currency:'EUR':'symbol':'1.2-2' }}</span></div>
+          <div><span>Envío</span><span [class.green]="cart.shipping === 0">{{ cart.shipping === 0 ? 'Gratis' : (cart.shipping | currency:'EUR':'symbol':'1.2-2') }}</span></div>
+          <div class="total"><span>Total</span><span>{{ cart.total | currency:'EUR':'symbol':'1.2-2' }}</span></div>
+        </div>
+        <div class="secure-badge">🔒 Pago 100% seguro y encriptado</div>
+      </div>
+    </div>
+  </div>
+</div>

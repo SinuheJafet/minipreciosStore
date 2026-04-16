@@ -1,0 +1,56 @@
+<div class="products-page">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__section">
+      <h3>Categorías</h3>
+      <ul class="filter-list">
+        <li *ngFor="let cat of categories">
+          <button [class.active]="selectedCategory === cat.slug" (click)="setCategory(cat.slug)">
+            {{ cat.label }}
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar__section">
+      <h3>Precio máximo</h3>
+      <input type="range" [(ngModel)]="currentMax" (input)="applyFilters()" [min]="priceRange.min" [max]="priceRange.max" step="5" class="price-slider">
+      <div class="price-range-label">
+        <span>0€</span>
+        <strong>{{ currentMax | currency:'EUR':'symbol':'1.0-0' }}</strong>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <!-- Header -->
+    <div class="main-header">
+      <div>
+        <h1>{{ pageTitle }}</h1>
+        <p>{{ filteredProducts.length }} productos encontrados</p>
+      </div>
+      <select [(ngModel)]="selectedSort" (change)="setSort(selectedSort)" class="sort-select">
+        <option *ngFor="let opt of sortOptions" [value]="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-grid" *ngIf="loading">
+      <div class="skeleton-card" *ngFor="let i of [1,2,3,4,5,6,7,8]"></div>
+    </div>
+
+    <!-- Empty -->
+    <div class="empty-state" *ngIf="!loading && filteredProducts.length === 0">
+      <span>🔍</span>
+      <h3>No encontramos productos</h3>
+      <p>Intenta con otros filtros o búsquedas</p>
+      <button (click)="setCategory('')" class="btn-primary-outline">Ver todos los productos</button>
+    </div>
+
+    <!-- Grid -->
+    <div class="products-grid" *ngIf="!loading && filteredProducts.length > 0">
+      <app-product-card *ngFor="let p of filteredProducts" [product]="p"></app-product-card>
+    </div>
+  </main>
+</div>
