@@ -1,0 +1,37 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    height: 100%;
+
+    > .header {
+        flex: 0 1 auto;
+        height    : 95px;
+        min-height: 95px;
+        max-height: 95px;
+    }
+    
+    .headerAlt {
+        flex: 0 1 auto;
+        height: 120px;
+        min-height: 120px;
+        max-height: 120px;
+
+        .title {
+            padding: 16px 0;
+            font-size: 17px;
+        }
+    }
+
+    .header, .headerAlt{
+        padding: 24px;
+        padding-left: 12px;
+        .subtitle{
+            opacity: 0.6;
+        }
+    }
+
+    > .content {
+        flex: 1;
+    }
+}

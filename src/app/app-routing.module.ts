@@ -9,6 +9,8 @@ import { NotFoundComponent } from './pages/not-found/not-found.component';
 import { WishlistComponent } from './pages/wishlist/wishlist.component';
 import { AuthComponent } from './pages/auth/auth.component';
 import { AdminComponent } from './pages/admin/admin.component';
+
+import { OrdersComponent } from './pages/orders/orders.component';
 import { AdminGuard } from './guards/admin.guard';
 
 const routes: Routes = [
@@ -18,6 +20,7 @@ const routes: Routes = [
   { path: 'cart', component: CartComponent },
   { path: 'checkout', component: CheckoutComponent },
   { path: 'wishlist', component: WishlistComponent },
+  { path: 'orders', component: OrdersComponent },
   { path: 'auth', component: AuthComponent },
   { path: 'admin', component: AdminComponent, canActivate: [AdminGuard] },
   { path: '404', component: NotFoundComponent },

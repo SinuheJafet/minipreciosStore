@@ -1,0 +1,308 @@
+<!-- <div class="content file-list">
+
+  <div fxLayout="row" fxLayoutAlign="space-between center">
+    <span class="evidence-title">{{title}} {{files.length}} {{(limit>0?'/':'')}} {{limit>0?limit:''}}</span>
+    <mat-slide-toggle *ngIf="files.length && showDelete" class="change-delete" labelPosition="before"
+      (change)="changeDelete($event)" [@animate]="{value:'*',params:{delay:'50ms',scale:'0.2'}}">
+      Eliminar
+    </mat-slide-toggle>
+  </div>
+
+  <div fxLayout="row wrap" fxLayoutGap="16px" fxLayoutAlign="{{filesAlign}}">
+
+    <div *ngFor="let file of files" class="evidence-button">
+
+      <div [ngSwitch]="file.fileManagerExtension" >
+        <div *ngSwitchCase="'.jpg'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" class="custom-avatar image"
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)" >
+        </div>
+        <div *ngSwitchCase="'.jpeg'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" class="custom-avatar image"
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.png'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" class="custom-avatar image"
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.bmp'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" class="custom-avatar image"
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.pdf'">
+          <img src="assets/images/file-manager/pdf-icon.png" class="custom-avatar image"
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.xml'">
+          <img src="assets/images/file-manager/xml-icon.png" class="custom-avatar image"
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.mp4'">
+          <img src="assets/images/file-manager/video-icon.png" class="custom-avatar image"
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchDefault>No soportado :(</div>
+      </div>
+
+      <button *ngIf="allowDelete" mat-icon-button class="cancel-button warn" matTooltip="Eliminar"
+        (click)="delete(file)" [@animate]="{value:'*',params:{delay:'50ms',scale:'0.2'}}">
+        <mat-icon class="s-16">close</mat-icon>
+      </button>
+
+    </div>
+
+    <div class="upload-control" *ngIf="limit>0 && files.length<limit && allowUpload">
+
+      <app-custom-file-uploader [clearOnComplete]="true" [appId]="appId" [referenceId]="referenceId"
+        [validTypes]="allowedFiles" (onComplete)="uploadComplete($event)">
+      </app-custom-file-uploader>
+
+    </div>
+
+  </div>
+
+</div> -->
+
+<div class="content file-list">
+
+  <div *ngIf="!isFrame" fxLayout="row" fxLayoutAlign="space-between center">
+    <span class="evidence-title">{{title}} {{files.length}} {{(limit>0?'/':'')}} {{limit>0?limit:''}}</span>
+    <mat-slide-toggle *ngIf="files.length && showDelete" class="change-delete" labelPosition="before"
+      (change)="changeDelete($event)" [@animate]="{value:'*',params:{delay:'50ms',scale:'0.2'}}">
+      Eliminar
+    </mat-slide-toggle>
+  </div>
+
+  <div fxLayout="row wrap" fxLayoutGap="16px" fxLayoutAlign="center center" *ngIf="showHorizontal && !isFrame">
+
+    <div *ngFor="let file of files" class="evidence-button">
+
+      <div [ngSwitch]="file.fileManagerExtension">
+        <div *ngSwitchCase="'.jpg'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.jpeg'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.png'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.bmp'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.pdf'">
+          <img src="assets/images/file-manager/pdf-icon.png" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.xml'">
+          <img src="assets/images/file-manager/xml-icon.png" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchDefault>No soportado :(</div>
+      </div>
+
+      <button *ngIf="allowDelete" mat-icon-button class="cancel-button warn" matTooltip="Eliminar"
+        (click)="delete(file)" [@animate]="{value:'*',params:{delay:'50ms',scale:'0.2'}}">
+        <mat-icon class="s-16">close</mat-icon>
+      </button>
+
+    </div>
+
+    <div class="upload-control" *ngIf="limit>0 && files.length<limit && allowUpload">
+
+      <app-custom-file-uploader [clearOnComplete]="true" [appId]="appId" [referenceId]="referenceId"
+        [validTypes]="allowedFiles" (onComplete)="uploadComplete($event)">
+      </app-custom-file-uploader>
+
+    </div>
+
+  </div>
+
+
+  <div fxLayout="column wrap" fxLayoutGap="16px" fxLayoutAlign="center start" *ngIf="!showHorizontal && !isFrame" >
+
+    <div *ngFor="let file of files" class="evidence-button">
+
+      <div [ngSwitch]="file.fileManagerExtension">
+        <div *ngSwitchCase="'.jpg'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.jpeg'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.png'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.bmp'">
+          <img src="{{(fileManagerExposeUrl+file.fileManagerName)}}" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.pdf'">
+          <img src="assets/images/file-manager/pdf-icon.png" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchCase="'.xml'">
+          <img src="assets/images/file-manager/xml-icon.png" [ngClass]="changeImageClass()" 
+            [matTooltip]="file.fileManagerRealName" (click)="viewFile(file)">
+        </div>
+        <div *ngSwitchDefault>No soportado :(</div>
+      </div>
+
+      <button *ngIf="allowDelete" mat-icon-button class="cancel-button warn" matTooltip="Eliminar"
+        (click)="delete(file)" [@animate]="{value:'*',params:{delay:'50ms',scale:'0.2'}}">
+        <mat-icon class="s-16">close</mat-icon>
+      </button>
+
+    </div>
+
+    <div class="upload-control" *ngIf="limit>0 && files.length<limit && allowUpload">
+
+      <app-custom-file-uploader [clearOnComplete]="true" [appId]="appId" [referenceId]="referenceId"
+        [validTypes]="allowedFiles" (onComplete)="uploadComplete($event)">
+      </app-custom-file-uploader>
+
+    </div>
+
+  </div>
+
+  <!-- ISFRAME -->
+  <div *ngIf="isFrame" fxLayout="row" fxLayoutAlign="center center">
+    <span class="evidence-title">{{title}} {{files.length}} {{(limit>0?'/':'')}} {{limit>0?limit:''}}</span>
+    <mat-slide-toggle *ngIf="files.length && showDelete" class="change-delete" labelPosition="before" style="font-size: 12px; margin-left: 14px;"
+      (change)="changeDelete($event)" [@animate]="{value:'*',params:{delay:'50ms',scale:'0.2'}}">
+      Eliminar
+    </mat-slide-toggle>
+  </div>
+  <div *ngIf="isFrame" class="m-2 mt-2 h1" fxLayout="row wrap" fxLayoutAlign="center start" fxLayoutGap="24px">
+    <div *ngFor="let file of files" class="ng-tns-c330-102 ng-star-inserted mt-12">
+      <button *ngIf="allowDelete" mat-icon-button class="frame-cancel-button warn" matTooltip="Eliminar" style="border-color: #fafafa;  border-style: solid;"
+        (click)="delete(file)" [@animate]="{value:'*',params:{delay:'50ms',scale:'0.2'}}">
+        <mat-icon class="s-16">close</mat-icon>
+      </button>
+      <div [ngSwitch]="file.fileManagerExtension" >
+
+        <!-- .JPG -->
+        <div fxLayout="column" 
+          *ngSwitchCase="'.jpg'"
+          fxlayoutalign="center center" 
+          class="product-image ng-tns-c330-102 ng-star-inserted" 
+          style="background-color:#fafafa !important; padding: 8px; border-radius: 10px;">
+          <img class="media ng-tns-c330-102" 
+            [matTooltip]="file.fileManagerRealName"
+            style="width: 138px; height: 138px; border-radius: 10px;" 
+            src="{{(fileManagerExposeUrl+file.fileManagerName)}}"
+            (click)="viewFile(file)">
+            <div *ngIf="file.comments!=null" style="font-size: 12px; width: 128px; font-weight: bold;" class="secondary-text mt-12">
+              <span *ngIf="file.comments.length>0">{{file.comments}}</span>
+            </div>
+        </div>
+        <!-- .JPEG -->
+        <div fxLayout="column" 
+          *ngSwitchCase="'.jpeg'"
+          fxlayoutalign="center center" 
+          class="product-image ng-tns-c330-102 ng-star-inserted" 
+          style="background-color:#fafafa !important; padding: 8px; border-radius: 10px;">
+          <img class="media ng-tns-c330-102" 
+            [matTooltip]="file.fileManagerRealName"
+            style="width: 138px; height: 138px; border-radius: 10px;" 
+            src="{{(fileManagerExposeUrl+file.fileManagerName)}}"
+            (click)="viewFile(file)">
+            <div *ngIf="file.comments!=null" style="font-size: 12px; width: 128px; font-weight: bold;" class="secondary-text mt-12">
+              <span *ngIf="file.comments.length>0">{{file.comments}}</span>
+            </div>
+        </div>
+        <!-- .PNG -->
+        <div fxLayout="column" 
+          *ngSwitchCase="'.png'"
+          fxlayoutalign="center center" 
+          class="product-image ng-tns-c330-102 ng-star-inserted" 
+          style="background-color:#fafafa !important; padding: 8px; border-radius: 10px;">
+          <img class="media ng-tns-c330-102" 
+            [matTooltip]="file.fileManagerRealName"
+            style="width: 138px; height: 138px; border-radius: 10px;" 
+            src="{{(fileManagerExposeUrl+file.fileManagerName)}}"
+            (click)="viewFile(file)">
+            <div *ngIf="file.comments!=null" style="font-size: 12px; width: 128px; font-weight: bold;" class="secondary-text mt-12">
+              <span *ngIf="file.comments.length>0">{{file.comments}}</span>
+            </div>
+        </div>
+        <!-- .BMP -->
+        <div fxLayout="column" 
+          *ngSwitchCase="'.bmp'"
+          fxlayoutalign="center center" 
+          class="product-image ng-tns-c330-102 ng-star-inserted" 
+          style="background-color:#fafafa !important; padding: 8px; border-radius: 10px;">
+          <img class="media ng-tns-c330-102" 
+            [matTooltip]="file.fileManagerRealName"
+            style="width: 138px; height: 138px; border-radius: 10px;" 
+            src="{{(fileManagerExposeUrl+file.fileManagerName)}}"
+            (click)="viewFile(file)">
+            <div *ngIf="file.comments!=null" style="font-size: 12px; width: 128px; font-weight: bold;" class="secondary-text mt-12">
+              <span *ngIf="file.comments.length>0">{{file.comments}}</span>
+            </div>
+        </div>
+        <!-- .PDF -->
+        <div fxLayout="column" 
+          *ngSwitchCase="'.pdf'"
+          fxlayoutalign="center center" 
+          class="product-image ng-tns-c330-102 ng-star-inserted" 
+          style="background-color:#fafafa !important; padding: 8px; border-radius: 10px;">
+          <img class="media ng-tns-c330-102" 
+            [matTooltip]="file.fileManagerRealName"
+            style="width: 138px; height: 138px; border-radius: 10px;" 
+            src="assets/images/file-manager/pdf-icon.png"
+            (click)="viewFile(file)">
+            <div *ngIf="file.comments!=null" style="font-size: 12px; width: 128px; font-weight: bold;" class="secondary-text mt-12">
+              <span *ngIf="file.comments.length>0">{{file.comments}}</span>
+            </div>
+        </div>
+        <!-- .XML -->
+        <div fxLayout="column" 
+          *ngSwitchCase="'.xml'"
+          fxlayoutalign="center center" 
+          class="product-image ng-tns-c330-102 ng-star-inserted" 
+          style="background-color:#fafafa !important; padding: 8px; border-radius: 10px;">
+          <img class="media ng-tns-c330-102" 
+            [matTooltip]="file.fileManagerRealName"
+            style="width: 138px; height: 138px; border-radius: 10px;" 
+            src="assets/images/file-manager/xml-icon.png"
+            (click)="viewFile(file)">
+            <div *ngIf="file.comments!=null" style="font-size: 12px; width: 128px; font-weight: bold;" class="secondary-text mt-12">
+              <span *ngIf="file.comments.length>0">{{file.comments}}</span>
+            </div>
+        </div>
+        <!-- NOT SUPPORTED -->
+        <div fxLayout="column" 
+          *ngSwitchDefault
+          fxlayoutalign="center center" 
+          class="product-image ng-tns-c330-102 ng-star-inserted" 
+          style="background-color:#fafafa !important; padding: 8px; border-radius: 10px;">
+          <img class="media ng-tns-c330-102" 
+            matTooltip="Archivo no Soportado : {{file.fileManagerName}}"
+            style="width: 138px; height: 138px; border-radius: 10px;" 
+            src="assets/images/file-manager/fileNotSupported.png">
+            <div style="font-size: 12px; width: 128px; font-weight: bold;" class="secondary-text mt-12">
+              <span><span class="warn-fg">Archivo no Soportado: </span> {{file.fileManagerName}}</span>
+            </div>
+        </div>
+      </div>
+
+      <div class="upload-control" *ngIf="limit>0 && files.length<limit && allowUpload">
+        <app-custom-file-uploader 
+          [clearOnComplete]="true" 
+          [appId]="appId" 
+          [referenceId]="referenceId"
+          [validTypes]="allowedFiles" (onComplete)="uploadComplete($event)">
+        </app-custom-file-uploader>
+      </div>
+    </div>
+  </div>
+
+</div>

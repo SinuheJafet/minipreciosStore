@@ -1,0 +1,7 @@
+<div class="spinner-container" *ngIf="isLoading">
+    <div class="spinner">
+      <div class="square" *ngFor="let square of squares"></div>
+    </div>
+    <p class="message">{{ message }}</p>
+</div>
+  

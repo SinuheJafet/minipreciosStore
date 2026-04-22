@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ProductService } from '../../services/product.service';
 import { Product } from '../../models/product.model';
-
 @Component({
   selector: 'app-products',
   templateUrl: './products.component.html',
@@ -38,7 +37,11 @@ export class ProductsComponent implements OnInit {
     { value: 'newest', label: 'Más nuevos' },
   ];
 
-  constructor(private productService: ProductService, private route: ActivatedRoute) {}
+  constructor(
+    private productService: ProductService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.productService.getProducts().subscribe(products => {
@@ -61,7 +64,11 @@ export class ProductsComponent implements OnInit {
     }
     if (this.searchQuery) {
       const q = this.searchQuery.toLowerCase();
-      result = result.filter(p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.tags.some(t => t.toLowerCase().includes(q)));
+      result = result.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q) ||
+        p.tags.some(t => t.toLowerCase().includes(q))
+      );
     }
     if (this.activeFilter === 'sale') result = result.filter(p => p.originalPrice);
     if (this.activeFilter === 'new') result = result.filter(p => p.badge === 'new');

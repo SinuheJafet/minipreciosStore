@@ -48,7 +48,7 @@
       <button (click)="setCategory('')" class="btn-primary-outline">Ver todos los productos</button>
     </div>
 
-    <!-- Grid -->
+    <!-- Product cards grid -->
     <div class="products-grid" *ngIf="!loading && filteredProducts.length > 0">
       <app-product-card *ngFor="let p of filteredProducts" [product]="p"></app-product-card>
     </div>

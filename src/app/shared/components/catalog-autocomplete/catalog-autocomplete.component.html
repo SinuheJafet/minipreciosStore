@@ -1,0 +1,33 @@
+<div [formGroup]="catalogForm" *ngIf="catalogForm" fxLayout="row">
+    <mat-form-field appearance="outline" floatLabel="always" class="w-full">
+        <mat-label>{{label}}</mat-label>    
+        <input 
+            matInput 
+            [placeholder]="label" 
+            aria-label="autocomplete" 
+            [matAutocomplete]="custom" 
+            [required] ="required"
+            [formControl]="keywordCtrl"
+        >
+        <mat-autocomplete 
+            #custom="matAutocomplete"
+            (optionSelected)="optionSelected($event)"
+            [displayWith]="displayFn">
+            <mat-option *ngFor="let option of filteredItems | async" [value]="option">
+                <div 
+                *ngIf="templatePropertyName" 
+                [innerHtml]="option[templatePropertyName] | sanitizeHtml"
+                >
+                </div>
+      
+              <div *ngIf="!templatePropertyName">
+                <span *ngIf="optionAppearence=='only-show'">{{option[showPropertyName]}}</span>   
+                <span *ngIf="optionAppearence=='value-show'">[{{option[valuePropertyName]}}] - {{option[showPropertyName]}}</span>  
+              </div>
+            </mat-option>
+        </mat-autocomplete>
+        <button mat-icon-button matSuffix [ngClass]="{'custom-autocomplete-hidden':(!selected || closeDisabled)}" (click)="clear()">
+            <mat-icon class="s-20" >close</mat-icon>
+          </button>
+    </mat-form-field>
+</div>

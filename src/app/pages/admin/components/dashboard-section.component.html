@@ -1,0 +1,115 @@
+<div class="dash">
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid" *ngIf="statsData">
+    <div class="kpi-card kpi-card--purple">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div>
+        <span class="kpi-value">${{ statsData.totalRevenue | number:'1.0-0' }}</span>
+        <span class="kpi-label">Ingresos totales</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-card--blue">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+      </div>
+      <div>
+        <span class="kpi-value">{{ statsData.totalOrders }}</span>
+        <span class="kpi-label">Pedidos totales</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-card--orange">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div>
+        <span class="kpi-value">{{ statsData.pendingOrders }}</span>
+        <span class="kpi-label">Pendientes de atender</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-card--green">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      </div>
+      <div>
+        <span class="kpi-value">{{ statsData.totalProducts }}</span>
+        <span class="kpi-label">Productos activos</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-card--red">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div>
+        <span class="kpi-value">{{ statsData.lowStockProducts + statsData.outOfStockProducts }}</span>
+        <span class="kpi-label">Stock bajo / agotado</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-card--indigo">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div>
+        <span class="kpi-value">{{ statsData.totalUsers }}</span>
+        <span class="kpi-label">Usuarios del sistema</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <!-- Recent Orders -->
+    <div class="dash-card">
+      <div class="dash-card__header">
+        <h3>Pedidos recientes</h3>
+      </div>
+      <div class="dash-table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let o of recentList">
+              <td><span class="order-id-chip">{{ o.id }}</span></td>
+              <td>
+                <span class="t-name">{{ o.customerName }}</span>
+                <span class="t-sub">{{ o.customerEmail }}</span>
+              </td>
+              <td class="t-bold">${{ o.total | number:'1.0-0' }}</td>
+              <td><span class="status-pill status-pill--{{o.status}}">{{ statusLabel(o.status) }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Low Stock -->
+    <div class="dash-card">
+      <div class="dash-card__header">
+        <h3>Alertas de inventario</h3>
+      </div>
+      <div class="dash-table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Producto</th><th>SKU</th><th>Stock</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of lowStockList">
+              <td>
+                <span class="t-name">{{ p.name }}</span>
+                <span class="t-sub">{{ p.brand }}</span>
+              </td>
+              <td><code class="sku-code">{{ p.sku }}</code></td>
+              <td>
+                <span class="stock-alert-pill" [class.out]="p.stock === 0">
+                  {{ p.stock === 0 ? 'Agotado' : p.stock + ' uds' }}
+                </span>
+              </td>
+            </tr>
+            <tr *ngIf="lowStockList.length === 0">
+              <td colspan="3" class="t-empty">Sin alertas de inventario</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

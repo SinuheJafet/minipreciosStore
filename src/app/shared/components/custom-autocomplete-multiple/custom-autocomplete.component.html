@@ -1,0 +1,100 @@
+
+<mat-form-field [appearance]="appearance" floatLabel="always" fxFlex >
+  <mat-label>{{label}}</mat-label>
+  <input 
+    #autoCompleteInput
+    matInput 
+    *ngIf="!multiple && !focusInitial" 
+    aria-label="autocomplete-input" 
+    [matAutocomplete]="list" 
+    [formControl]="inputCtrl" 
+  >
+  <input
+    #autoCompleteInput
+    matInput 
+    *ngIf="!multiple && focusInitial" 
+    cdkFocusInitial 
+    aria-label="autocomplete-input" 
+    [matAutocomplete]="list" 
+    [formControl]="inputCtrl" 
+  >
+
+  <input 
+    #autoCompleteInput
+    matInput 
+    *ngIf="multiple" 
+    aria-label="autocomplete-input" 
+    [matAutocomplete]="list" 
+    #trigger="matAutocompleteTrigger"
+    [formControl]="inputCtrl"
+    placeholder="{{multiplePlaceholder}}"
+  >
+  <mat-dialog-content cdkScrollable >
+  <mat-autocomplete 
+    #list="matAutocomplete" 
+    (optionSelected)="onOptionSelected($event)" 
+    [displayWith]="displayFn"
+    class="menu-button"
+    
+  >
+    <div *ngIf="multiple" fxLayout="row" fxLayoutAlign="space-evenly center" class="dropdown-menu">
+      <mat-option class="pl-2 w-120" fxFlex 
+        [disabled]="isAllSelected()"
+        (click)="$event.stopPropagation(); trigger.openPanel(); selectAll();"
+        class="dropdown-in"
+      >
+        <mat-icon matSuffix>done_all</mat-icon>
+        <span>Todas</span>
+      </mat-option>
+      <mat-option class="p-0" fxFlex
+        [disabled]="isAllDeSelected()"
+        (click)="$event.stopPropagation(); trigger.openPanel(); deSelectAll();"
+      >
+        <mat-icon matSuffix>remove_circle</mat-icon>
+        <span>Ninguna</span>
+      </mat-option>
+    </div>
+
+    <div *ngIf="multiple && inputCtrl.value == ''">
+      <mat-option 
+        *ngFor="let option of selectedOptions" 
+        [value]="option"
+        (click)="$event.stopPropagation(); trigger.openPanel()"
+      >
+        <mat-icon *ngIf="multiple && !option.checked">check_box_outline_blank</mat-icon>
+        <mat-icon *ngIf="multiple && option.checked">check_box</mat-icon>
+
+        <span *ngIf="optionAppearence=='only-show'">{{option[showPropertyName]}}</span>  
+        <span *ngIf="optionAppearence=='value-show'">[{{option[valuePropertyName]}}] - {{option[showPropertyName]}}</span>  
+      </mat-option>
+    </div>
+
+    <div *ngIf="multiple">
+      <mat-option 
+        *ngFor="let option of filteredList | async" 
+        [value]="option"
+        (click)="$event.stopPropagation(); trigger.openPanel()"
+      >
+  
+        <mat-icon *ngIf="multiple && !option.checked">check_box_outline_blank</mat-icon>
+        <mat-icon *ngIf="multiple && option.checked">check_box</mat-icon>
+  
+        <span *ngIf="optionAppearence=='only-show'">{{option[showPropertyName]}}</span>  
+        <span *ngIf="optionAppearence=='value-show'">[{{option[valuePropertyName]}}] - {{option[showPropertyName]}}</span>  
+      </mat-option>
+    </div>
+    
+    <div *ngIf="!multiple">
+      <mat-option 
+        *ngFor="let option of filteredList | async" 
+        [value]="option"
+      >
+        <span *ngIf="optionAppearence=='only-show'">{{option[showPropertyName]}}</span>  
+        <span *ngIf="optionAppearence=='value-show'">[{{option[valuePropertyName]}}] - {{option[showPropertyName]}}</span>  
+      </mat-option>
+    </div>
+
+  </mat-autocomplete>
+</mat-dialog-content >
+</mat-form-field>
+

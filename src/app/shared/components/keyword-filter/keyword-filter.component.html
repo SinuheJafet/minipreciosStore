@@ -1,0 +1,15 @@
+<div id="keyword-filter">
+  <div class="search-wrapper">
+    <div class="search flex flex-row justify-center items-center">
+      <mat-icon>search</mat-icon>
+      <input placeholder="Buscar...*" [formControl]="control"  (keypress)="onlyNubersAndLetters($event)"> 
+      <mat-icon 
+        class="search-clear s-16" 
+        (click)="keywordClear()" 
+        [ngClass]="{'hide': (!control || !control.value || control.value === '')}"
+        >
+        close
+      </mat-icon>
+    </div>
+  </div>
+</div>

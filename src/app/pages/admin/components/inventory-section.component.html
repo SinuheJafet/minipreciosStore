@@ -1,0 +1,84 @@
+<div class="section-card">
+  <div class="section-card__header">
+    <h2>Inventario</h2>
+    <div class="header-actions">
+      <div class="inv-filters">
+        <button [class.active]="activeFilter==='all'" (click)="setFilter('all')">Todos <span>{{ count('all') }}</span></button>
+        <button [class.active]="activeFilter==='low'" (click)="setFilter('low')">Stock bajo <span>{{ count('low') }}</span></button>
+        <button [class.active]="activeFilter==='out'" (click)="setFilter('out')">Agotado <span>{{ count('out') }}</span></button>
+      </div>
+      <button class="btn-movement" (click)="openModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Registrar movimiento
+      </button>
+    </div>
+  </div>
+
+  <dynamic-table
+    [columns]="columns"
+    [data]="filtered$"
+    [isSelectable]="false"
+    [canFilter]="true"
+    [filterTitle]="'Buscar producto…'"
+    [pageSize]="10"
+    [emptyLabel]="'Sin productos con este filtro'"
+  ></dynamic-table>
+</div>
+
+<!-- Movement Modal -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h3>Registrar movimiento de inventario</h3>
+      <button class="modal__close" (click)="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+
+      <!-- Type selector -->
+      <div class="mov-type-row">
+        <button *ngFor="let t of movTypes" class="mov-type-btn"
+          [class.mov-type-btn--entrada]="t.key==='entrada' && movType===t.key"
+          [class.mov-type-btn--salida]="t.key==='salida' && movType===t.key"
+          [class.mov-type-btn--ajuste]="t.key==='ajuste' && movType===t.key"
+          [class.active]="movType===t.key"
+          (click)="movType=t.key; onTypeChange()">
+          {{ t.label }}
+        </button>
+      </div>
+
+      <div class="field">
+        <label>Producto <span class="req">*</span></label>
+        <select [(ngModel)]="movProductId">
+          <option [ngValue]="null" disabled>Selecciona un producto…</option>
+          <option *ngFor="let p of allList" [ngValue]="p.id">{{ p.name }} — {{ p.sku }} ({{ p.stock }} uds)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Concepto <span class="req">*</span></label>
+        <select [(ngModel)]="movConcept">
+          <option value="" disabled>Selecciona un concepto…</option>
+          <option *ngFor="let c of concepts" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Cantidad <span class="req">*</span></label>
+          <input type="number" [(ngModel)]="movQty" min="1">
+        </div>
+        <div class="field">
+          <label>Notas <small>(opcional)</small></label>
+          <input type="text" [(ngModel)]="movNotes" placeholder="Ej. Lote #123…">
+        </div>
+      </div>
+
+      <div class="modal__footer">
+        <button class="btn-cancel" (click)="closeModal()">Cancelar</button>
+        <button class="btn-save" (click)="saveMovement()" [disabled]="!movProductId || !movConcept">Guardar movimiento</button>
+      </div>
+    </div>
+  </div>
+</div>

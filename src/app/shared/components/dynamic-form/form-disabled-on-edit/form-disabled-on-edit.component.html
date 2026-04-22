@@ -1,0 +1,178 @@
+<div id="dynamic-form" class="w-full" *ngIf="properties" >
+
+    <form [formGroup]="dynamicFormGroup" fxLayout="column" *ngIf="dynamicFormGroup" class="w-full">
+  
+      <div *ngFor="let property of properties" class="w-full">
+  
+        <div [ngSwitch]="property.type" class="w-full" *ngIf="property.showOnAddOrEdit">
+  
+          <div *ngSwitchCase="'text'" class="w-full">
+  
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{property.title}}</mat-label>
+              <input formControlName="{{property.name}}" matInput >
+              <mat-error *ngIf="f[property.name].hasError('required')">Campo {{property.title}} requerida</mat-error>
+              <mat-error *ngIf="f[property.name].hasError('minlength')">Se requieren al menos {{property.minLength}}
+                caracteres </mat-error>
+              <mat-error *ngIf="f[property.name].hasError('maxlength')">M&aacute;ximo {{property.maxLength}} caracteres
+              </mat-error>
+            </mat-form-field>
+  
+          </div>
+  
+          <div *ngSwitchCase="'number'" class="w-full">
+  
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{property.title}}</mat-label>
+              <input type="number" formControlName="{{property.name}}" min="0" matInput >
+              <mat-error *ngIf="f[property.name].hasError('required')">Campo {{property.title}} requerida</mat-error>
+              <mat-error *ngIf="f[property.name].errors?.min">El valor mínimo permitido es 0 </mat-error>
+            </mat-form-field>
+  
+          </div>
+  
+          <div *ngSwitchCase="'currency'" class="w-full">
+  
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{property.title}}</mat-label>
+              <input type="text" formControlName="{{property.name}}" matInput mask="separator.2" thousandSeparator=","
+                prefix="$">
+              <mat-error *ngIf="f[property.name].hasError('required')">Campo {{property.title}} requerida</mat-error>
+            </mat-form-field>
+  
+          </div>
+  
+  
+          <div *ngSwitchCase="'decimal'" class="w-full">
+  
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{property.title}}</mat-label>
+              <input type="text" formControlName="{{property.name}}" matInput mask="separator.2" thousandSeparator=",">
+              <mat-error *ngIf="f[property.name].hasError('required')">Campo {{property.title}} requerida</mat-error>
+            </mat-form-field>
+  
+          </div>
+  
+  
+          <div *ngSwitchCase="'date'" class="w-full">                    
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{property.title}}</mat-label>
+              <input matInput [matDatepicker]="picker" formControlName="{{property.name}}">
+              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+              <mat-error *ngIf="f[property.name].hasError('required')">Campo {{property.title}} requerido</mat-error>
+            </mat-form-field>
+          </div>
+  
+          <div *ngSwitchCase="'time'" class="w-full">                    
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{property.title}}</mat-label>
+              <input matInput formControlName="{{property.name}}" type="time"> 
+             
+              <mat-error *ngIf="f[property.name].hasError('required')">Campo {{property.title}} requerido</mat-error>
+            </mat-form-field>
+            
+          </div>
+  
+        
+          <div *ngSwitchCase="'list'" class="w-full">          
+            <app-custom-autocomplete 
+              class="w-full" 
+              [label]="property.title"
+              [showPropertyName]="property.source.showPropertyName"
+              [valuePropertyName]="property.source.valuePropertyName" 
+              [data]="getDataByName(property.name)"
+              [required]="property.required" 
+              [control]="dynamicFormGroup.get(property.name)" 
+              *ngIf="dataIn"
+              [isDisabled]="isOnEdit && property.disabledOnEdit"
+            ></app-custom-autocomplete>
+  
+          </div>              
+  
+          <div *ngSwitchCase="'color'" class="w-full">
+  
+            <div fxLayout="column" class="w-full mb-20">
+  
+              <span class="mat-caption form-label">{{property.title}} <b
+                  *ngIf="f[property.name].hasError('required')">(Requerido)</b></span>
+  
+              <div class="w-full text-center">
+                <fuse-material-color-picker [color]="f[property.name].value"
+                  (colorChanged)="onColorChanged($event, f[property.name] )">
+                </fuse-material-color-picker>
+              </div>
+  
+  
+            </div>
+  
+          </div>
+  
+  
+          <div *ngSwitchCase="'boolean'" class="w-full">
+  
+            <div fxLayout="column" class="w-full mb-6">
+  
+              <mat-slide-toggle name="{{property.name}}" formControlName="{{property.name}}" labelPosition="after">
+                {{property.title}}
+              </mat-slide-toggle>
+  
+            </div>
+  
+          </div>
+  
+  
+          <div *ngSwitchCase="'email'" class="w-full">
+  
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{property.title}}</mat-label>
+              <input formControlName="{{property.name}}" matInput>
+              <mat-error *ngIf="f[property.name].hasError('required')">Campo {{property.title}} requerida</mat-error>
+              <mat-error *ngIf="f[property.name].hasError('email')">Ingresa un email válido</mat-error>
+            </mat-form-field>
+  
+          </div>
+  
+          <div *ngSwitchCase="'file'" class="w-full">          
+            <fm-uploader
+              *ngIf         = "filesHandler && property && property.name && filesHandler[property.name]"
+              [title]       = "property.title"
+              [fileType]    = "property.fileType"
+              [limit]       = "property.fileNumber" 
+              [files]       = "filesHandler[property.name]"
+              (saved)       = "onFileUploadComplete($event, property)"
+              (deleted)     = "onFileDeleteComplete($event, property)"
+            ></fm-uploader>
+          </div>
+  
+        </div>
+  
+      </div>
+  
+    </form>  
+  
+    <div fxLayout="row" fxLayoutAlign="end center" class="mt-[20px]" fxLayoutGap="12px">
+  
+      <button 
+        mat-button 
+        class="bg-gray-400 text-on-gray-400" 
+        (click)="onCancel()"
+      >
+        Cancelar
+      </button>
+  
+      <button 
+        mat-raised-button 
+        class="bg-accent text-on-accent" 
+        *ngIf="dynamicFormGroup"
+        [disabled]="dynamicFormGroup.invalid || isSaving" 
+        (click)="onClickSave()"
+      >
+        <span *ngIf="!isSaving">Guardar</span>
+        <span *ngIf="isSaving">Guardando...</span>
+      </button>
+  
+    </div>
+  
+  
+  </div>

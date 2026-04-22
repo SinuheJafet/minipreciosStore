@@ -1,0 +1,53 @@
+<div id="generic-dialog">
+  <!-- HEADER   -->
+  <mat-toolbar matDialogTitle class="bg-accent text-on-accent m-0 ">
+    <mat-toolbar-row class="flex flex-row justify-between" >
+      <span class="title dialog-title text-truncate">
+        {{title}}
+      </span>
+      <button mat-icon-button mat-dialog-close *ngIf="options?.disableClose === false">
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-toolbar-row>
+  </mat-toolbar>
+  <!-- END HEADER -->
+
+  <!-- CONTENT -->
+  <div mat-dialog-content 
+    class="m-[0px] p-[0px]" 
+    fusePerfectScrollbar
+  >
+    <ng-template #genericDialogDirective=genericDialogDirective genericDialogHost></ng-template>
+  </div>
+  <!-- END CONTENT -->
+  
+  <!-- ACTIONS -->
+  <mat-dialog-actions 
+    class="px-[20px] flex flex-row justify-end"
+    *ngIf="options.showCancelAction || actions.length"
+  >
+    <button 
+      mat-button 
+      cdkFocusInitial 
+      matTooltip="Cancelar" 
+      mat-dialog-close 
+      class="bg-gray-400"
+      *ngIf="options.showCancelAction"
+    >
+      Cancelar
+    </button>
+    <ng-container *ngFor="let action of actions">
+      <button 
+        mat-button 
+        (click)="action.click()" 
+        [matTooltip]="action.tooltip" 
+        [ngClass]="action.color"
+        [disabled]=" (action.$disabled | async)!= undefined && (action.$disabled | async)"
+      >
+        {{action.name}}
+      </button>
+    </ng-container>
+  </mat-dialog-actions>
+  <!-- END ACTIONS -->
+
+</div>

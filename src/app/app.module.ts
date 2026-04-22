@@ -3,6 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
+import { HttpClientModule } from '@angular/common/http';
 import { AppComponent } from './app.component';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { FooterComponent } from './shared/components/footer/footer.component';
@@ -15,7 +16,9 @@ import { CheckoutComponent } from './pages/checkout/checkout.component';
 import { NotFoundComponent } from './pages/not-found/not-found.component';
 import { WishlistComponent } from './pages/wishlist/wishlist.component';
 import { AuthComponent } from './pages/auth/auth.component';
-import { AdminComponent } from './pages/admin/admin.component';
+import { AdminModule } from './pages/admin/admin.module';
+import { OrdersComponent } from './pages/orders/orders.component';
+import { DynamicTableModule } from './shared/components/dynamic-table/dynamic-table.module';
 
 @NgModule({
   declarations: [
@@ -31,13 +34,16 @@ import { AdminComponent } from './pages/admin/admin.component';
     NotFoundComponent,
     WishlistComponent,
     AuthComponent,
-    AdminComponent,
+    OrdersComponent,
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     FormsModule,
     ReactiveFormsModule,
+    HttpClientModule,
+    DynamicTableModule,
+    AdminModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

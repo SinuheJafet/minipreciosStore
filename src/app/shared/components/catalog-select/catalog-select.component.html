@@ -1,0 +1,16 @@
+<div [formGroup]="catalogForm" *ngIf="catalogForm">
+    <mat-form-field appearance="outline" floatLabel="always" fxFlex class="text-imput">
+        <mat-label>{{label}}</mat-label>
+        <mat-select 
+            [required]="required" 
+            [formControlName]="controlName"
+            >
+            <mat-option *ngFor="let item of items" [value]="item.id">
+                {{item.name}}
+            </mat-option>
+        </mat-select>
+        <mat-error *ngIf="required">
+            Campo requerido
+        </mat-error>
+    </mat-form-field>
+</div>

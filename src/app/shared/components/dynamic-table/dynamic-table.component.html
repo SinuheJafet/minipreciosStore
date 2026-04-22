@@ -1,0 +1,213 @@
+<div id="dynamic-table" style="display:flex; flex-direction:column;">
+
+  <!-- HEADER -->
+  <div class="dynamic-table-header" style="display:flex; flex-direction:row; gap:20px; align-items:center; justify-content:center;">
+
+    <!-- FILTER INPUT -->
+    <mat-form-field *ngIf="canFilter" class="search-input">
+      <input matInput [formControl]="filterInputControl" [placeholder]="filterTitle">
+      <button mat-icon-button matSuffix (click)="clear()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <!-- ADD ICON BUTTON -->
+    <button *ngIf="canAddItem && addStyle === 'icon'" mat-icon-button class="add-icon-button accent mr-8"
+      [matTooltip]="addTooltip" (click)="newItem()">
+      <mat-icon>{{addIcon}}</mat-icon>
+    </button>
+
+    <!-- ADD BUTTON -->
+    <button *ngIf="canAddItem && addStyle === 'button'" mat-raised-button class="add-button accent"
+      (click)="newItem()">
+      {{addText}}
+    </button>
+  </div>
+  <!-- / HEADER -->
+
+  <!-- CONTENT -->
+  <div class="dynamic-table-content mat-elevation-z2" style="overflow-x:auto;" #TABLE>
+
+    <!-- XLS EXPORT BUTTON -->
+    <button mat-icon-button class="green-600-fg download-xls-button"
+      (click)="dataSource.paginator = null; downloadXls(); dataSource.paginator = paginator;"
+      matTooltip="Exportar a CSV" *ngIf="allowXlsExport">
+      <mat-icon>cloud_download</mat-icon>
+    </button>
+
+    <!-- DATA TABLE -->
+    <table mat-table class="data-table" [ngClass]="tableClassName" [dataSource]="dataSource" matSort>
+
+      <!-- CHECKBOX COLUMN -->
+      <ng-container cdkColumnDef="__check" *ngIf="checkable">
+        <th mat-header-cell *cdkHeaderCellDef class="dt-check-cell">
+          <input type="checkbox" class="dt-check" [checked]="allChecked" (change)="toggleCheckAll()">
+        </th>
+        <td mat-cell *cdkCellDef="let row" class="dt-check-cell">
+          <input type="checkbox" class="dt-check" [checked]="isChecked(row)" (change)="toggleCheck(row, $event)">
+        </td>
+      </ng-container>
+
+      <ng-container *ngFor="let column of columns" [cdkColumnDef]="column.columnDef">
+
+        <!-- TABLE HEADER DEFINITION -->
+        <th mat-header-cell class="pl-4" *cdkHeaderCellDef mat-sort-header
+          [style.display]="hideHeader ? 'none' : null"
+          [ngClass]="column.headerClass ? column.headerClass : ''">
+          {{ column.headerName }}
+        </th>
+
+        <!-- TABLE ROW DEFINITION -->
+        <td mat-cell class="pl-4" *cdkCellDef="let row"
+          [ngClass]="column.contentClass ? column.contentClass : ''">
+          <div [ngClass]="column.conditionalClass ? column.conditionalClass(row) : ''">
+
+            <!-- DEFAULT ROW DEFINITION -->
+            <div *ngIf="(!column.operations || !column.operations.length) && !column.isIcon && !column.isActiveFormat && !column.isTemplate && !column.isHtmlTemplate">
+              {{ column.cell ? column.cell(row) : row[column.columnDef] }}
+            </div>
+
+            <!-- OPERATIONS ROW DEFINITION -->
+            <div *ngIf="column.operations && column.operations.length"
+                 style="display:flex; flex-direction:row; align-items:center; justify-content:flex-end; gap:5px;">
+
+              <!-- 'More' menu (xs) -->
+              <div *ngIf="column.operationVisualization === 'more'" class="show-xs">
+                <button mat-icon-button [matMenuTriggerFor]="moreMenu" (click)="$event.stopPropagation();">
+                  <mat-icon class="secondary-text">more_vert</mat-icon>
+                </button>
+                <mat-menu #moreMenu="matMenu">
+                  <div *ngFor="let operation of column.operations">
+                    <button mat-menu-item
+                      *ngIf="!operation.hideCondition || (operation.hideCondition && operation.hideCondition(row))"
+                      [ngClass]="operation.color" (click)="operation.action(row)">
+                      <mat-icon [ngClass]="operation.color"
+                        [matBadge]="(operation.badge && row[operation.badge] > 0) ? row[operation.badge] : null"
+                        matBadgeColor="accent" svgIcon="{{operation.icon}}">
+                      </mat-icon>
+                      <span>{{operation.toolTip}}</span>
+                    </button>
+                  </div>
+                </mat-menu>
+              </div>
+
+              <!-- 'icons' Visualization -->
+              <div *ngIf="!column.operationVisualization || column.operationVisualization === 'icons'"
+                   style="display:flex; flex-direction:row;">
+                <div *ngFor="let operation of column.operations">
+                  <span
+                    *ngIf="(!operation.hideCondition && operation.isText) || (operation.hideCondition && operation.hideCondition(row) && operation.isText)"
+                    [ngClass]="operation.color" style="font-size:10px;">{{operation.text}}</span>
+                  <button
+                    *ngIf="(!operation.hideCondition && !operation.isText) || (operation.hideCondition && operation.hideCondition(row) && !operation.isText)"
+                    mat-icon-button matTooltip="{{operation.toolTip}}"
+                    (click)="operation.action(row)">
+                    <mat-icon class="material-icons-outlined"
+                      [ngStyle]="{ color: operation.iconColor ? operation.iconColor(row) : null }"
+                      [matBadge]="(operation.badge && row[operation.badge] > 0) ? row[operation.badge] : null"
+                      [matBadgeColor]="$any(operation.badgeColor ? operation.badgeColor : 'accent')">
+                      {{operation.icon}}
+                    </mat-icon>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+            <!-- / OPERATIONS ROW DEFINITION -->
+
+            <!-- TOGGLE ROW DEFINITION -->
+            <div *ngIf="column.toogle">
+              <mat-slide-toggle
+                [disabled]="column.toogle.disabled && row[column.toogle.disabled]"
+                [checked]="row[column.toogle.value]"
+                (change)="column.toogle.action(row,$event)">
+              </mat-slide-toggle>
+            </div>
+
+            <!-- ICON ROW DEFINITION -->
+            <div *ngIf="column.isIcon">
+              <mat-icon [ngClass]="column.conditionalClass(row)">{{column.cell(row)}}</mat-icon>
+            </div>
+
+            <!-- HTML TEMPLATE ROW DEFINITION -->
+            <div *ngIf="column.isHtmlTemplate" [innerHTML]="column.contentTemplate(row)"></div>
+
+            <!-- ACTIVE FORMAT -->
+            <div *ngIf="column.isActiveFormat">
+              <mat-icon *ngIf="row[column.columnDef]" style="color:#4caf50;">check</mat-icon>
+              <mat-icon *ngIf="!row[column.columnDef]" style="color:#f44336;">close</mat-icon>
+            </div>
+
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- TABLE HEADER ROW -->
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"
+          [style.display]="hideHeader ? 'none' : null"></tr>
+
+      <!-- TABLE DATA ROW -->
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+          [ngClass]="{'row-selected': (row === selectedRow && isSelectable), 'cursor-default': !isSelectable}"
+          [style.display]="loading ? 'none' : null"
+          (click)="select(row)" (dblclick)="dblclick(row)"></tr>
+
+    </table>
+    <!-- / DATA TABLE -->
+
+    <!-- NO ROWS MESSAGE -->
+    <div class="rows-empty mat-table" [ngClass]="{'pb-0': !hidePaginator}"
+      *ngIf="!loading && dataSource.data.length === 0"
+      style="display:flex; align-items:center; justify-content:center;">
+      {{emptyLabel}}
+    </div>
+
+    <!-- LOADING MESSAGE -->
+    <div class="loading mat-table" *ngIf="loading"
+      style="display:flex; align-items:center; justify-content:center;">
+      Obteniendo información...
+    </div>
+
+    <!-- CLIENT PAGINATOR -->
+    <div *ngIf="!serverLoading" [style.display]="(hidePaginator || loading) ? 'none' : 'flex'"
+      style="flex-direction:row; align-items:center; justify-content:flex-end; gap:20px; margin-top:4px;">
+      <mat-paginator #tablePaginator [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions"></mat-paginator>
+    </div>
+
+    <!-- SERVER PAGINATION -->
+    <div *ngIf="serverLoading"
+      style="display:flex; flex-direction:row; align-items:center; justify-content:flex-end; gap:20px; margin-top:4px;">
+
+      <div *ngIf="!hidePageSizeSelector"
+           style="display:flex; flex-direction:row; align-items:center; gap:10px;">
+        <span class="mat-caption">Registros por Página</span>
+        <mat-form-field class="custom-mat-form-field">
+          <mat-select [formControl]="serverPageSize">
+            <mat-option *ngFor="let itemPerPage of itemsPerPage" [value]="itemPerPage">
+              {{itemPerPage}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div style="display:flex; flex-direction:row; align-items:center; gap:10px;">
+        <span class="mat-caption">
+          {{(offset + 1)}} - {{(offset + limit) > total ? total : (offset + limit)}} de {{total}}
+        </span>
+        <div>
+          <button mat-icon-button (click)="previous()">
+            <mat-icon>keyboard_arrow_left</mat-icon>
+          </button>
+          <button mat-icon-button (click)="next()">
+            <mat-icon>keyboard_arrow_right</mat-icon>
+          </button>
+        </div>
+      </div>
+
+    </div>
+    <!-- / SERVER PAGINATION -->
+
+  </div>
+  <!-- / CONTENT -->
+
+</div>

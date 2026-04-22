@@ -1,0 +1,16 @@
+<div class="section-card">
+  <div class="section-card__header">
+    <h2>Movimientos de inventario</h2>
+  </div>
+  <dynamic-table
+    [columns]="columns"
+    [data]="movements"
+    [isSelectable]="false"
+    [canFilter]="true"
+    [filterTitle]="'Buscar producto, concepto…'"
+    [pageSize]="10"
+    [allowXlsExport]="true"
+    [emptyLabel]="'Sin movimientos registrados'"
+    defaultSortColumn="createdAt:desc"
+  ></dynamic-table>
+</div>

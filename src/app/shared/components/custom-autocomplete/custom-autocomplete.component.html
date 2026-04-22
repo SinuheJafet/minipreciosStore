@@ -1,0 +1,70 @@
+<mat-form-field *ngIf="control" [appearance]="appearance" class="w-full" >
+  <mat-label>{{label}}</mat-label>  
+  <!-- NO FOCUS INITIAL INPUT -->
+  <input 
+    matInput 
+    *ngIf="!focusInitial" 
+    aria-label="autocomplete-input" 
+    [matAutocomplete]="list" 
+    [formControl]="inputCtrl" 
+  >
+  <!-- / NO FOCUS INITIAL INPUT -->
+
+  <!-- FOCUS INITIAL INPUT -->
+  <input 
+    matInput 
+    *ngIf="focusInitial" 
+    cdkFocusInitial 
+    aria-label="autocomplete-input" 
+    [matAutocomplete]="list" 
+    [formControl]="inputCtrl" 
+  >
+  <!-- / FOCUS INITIAL INPUT -->
+  
+  <!-- AUTOCOMPLETE -->
+  <mat-autocomplete 
+    #list="matAutocomplete" 
+    (optionSelected)="onOptionSelected($event)" 
+    [displayWith]="displayFn"
+  >        
+      <mat-option *ngFor="let option of filteredList | async" [value]="option">
+        <!-- TEMPLATE PROPERTY OPTION LAYOUT -->
+        <div 
+          *ngIf="templatePropertyName" 
+          [innerHtml]="option[templatePropertyName] | sanitizeHtml"
+        ></div>
+        <!-- / TEMPLATE PROPERTY OPTION LAYOUT -->
+
+        <!-- OPTION LAYOUT -->
+        <div *ngIf="!templatePropertyName">
+          <span *ngIf="optionAppearence=='only-show'">{{option[showPropertyName]}}</span>  
+          <span *ngIf="optionAppearence=='value-show'">[{{option[valuePropertyName]}}] - {{option[showPropertyName]}}</span>  
+        </div>
+        <!-- / OPTION LAYOUT -->
+      </mat-option>      
+  </mat-autocomplete>  
+  <!-- / AUTOCOMPLETE -->
+      
+  <!-- ARROW ICON -->
+  <mat-icon 
+    matSuffix 
+    class="s-20 cursor-pointer"
+    [ngClass]="{'custom-autocomplete-hidden': selected || isDisabled}" 
+    (click)="clear()"
+  >
+    arrow_drop_down
+  </mat-icon>
+  <!-- / ARROW ICON -->
+
+  <!-- CLEAR ICON -->
+  <button 
+    mat-icon-button 
+    matSuffix 
+    [ngClass]="{'custom-autocomplete-hidden':(!selected || isDisabled)}" 
+    (click)="clear()"
+  >
+    <mat-icon class="s-20" >close</mat-icon>
+  </button>
+  <!-- / CLEAR ICON -->
+
+</mat-form-field>

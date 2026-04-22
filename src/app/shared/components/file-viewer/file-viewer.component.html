@@ -1,0 +1,89 @@
+<div class="actions pt-4">
+  <button *ngIf="allowDownload" mat-icon-button class="green-800 mr-24" (click)="download()" matTooltip="Descargar">
+    <mat-icon>cloud_download</mat-icon>
+  </button>
+  <button mat-icon-button (click)="close()" class="accent " matTooltip="Cerrar">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+
+
+<div [ngSwitch]="extension">
+  <div *ngSwitchCase="'.jpg'">
+    <img src={{src}}>
+  </div>
+  <div *ngSwitchCase="'.jpeg'">
+    <img src={{src}}>
+  </div>
+  <div *ngSwitchCase="'.png'">
+    <img src={{src}}>
+  </div>
+  <div *ngSwitchCase="'.bmp'">
+    <img src={{src}}>
+  </div>
+  <div *ngSwitchCase="'.pdf'">
+    <pdf-viewer [src]="src"></pdf-viewer>
+  </div>
+  <div *ngSwitchCase="'.xml'">
+    {{xmlContent}}
+  </div>
+  <div *ngSwitchCase="'.mp4'">
+    <video class="content-video" controls data-setup='{ "aspectRatio":"640:267", "playbackRates": [1, 1.5, 2] }'
+      autoplay>
+      <source [src]="src" type='video/mp4' />
+    </video>
+  </div>
+  <div *ngSwitchDefault>No visible</div>
+</div>
+
+
+
+<!-- <h1 mat-dialog-title>Hi</h1>
+<div mat-dialog-content>
+  <p>What's your favorite animal?</p>
+  
+</div>
+<div mat-dialog-actions>
+  <button mat-button >No Thanks</button>
+  <button mat-button  cdkFocusInitial>Ok</button>
+</div>
+
+<div> -->
+<!-- CONTENT -->
+<!-- <mat-dialog-content fxLayout="column"> -->
+<!-- <div style="height: 780px; overflow: auto"> -->
+<!-- <div [ngSwitch]="extension">
+      <div *ngSwitchCase="'.jpg'">
+        <img src={{src}}>
+      </div>
+      <div *ngSwitchCase="'.jpeg'">
+        <img src={{src}}>
+      </div>
+      <div *ngSwitchCase="'.png'">
+        <img src={{src}}>
+      </div>
+      <div *ngSwitchCase="'.bmp'">
+        <img src={{src}}>
+      </div>
+      <div *ngSwitchCase="'.pdf'">
+        <pdf-viewer [src]="src"></pdf-viewer>
+      </div>
+      <div *ngSwitchCase="'.xml'">
+        {{xmlContent}}
+      </div>
+      <div *ngSwitchDefault>No visible</div>
+    </div> -->
+<!-- </div> -->
+<!-- </mat-dialog-content> -->
+<!-- / CONTENT -->
+
+<!-- <mat-dialog-actions *ngIf="allowDownload" align="end">
+    <button mat-flat-button color="primary" class="mr-20" (click)="download()">
+      Descargar
+    </button>
+    <button mat-icon-button (click)="close()" class="primary" matTooltip="Cerrar">
+      <mat-icon>close</mat-icon>
+    </button>
+  </mat-dialog-actions> -->
+<!-- </div> -->

@@ -1,0 +1,96 @@
+<div id="data-viewer" fxFlex fxLayout="row">
+
+  <div class="content">
+
+    <!-- SEARCH AND EXPORT -->
+    <div class="search-container" *ngIf="options.showFilter">
+      <mat-form-field fxFlex>
+        <input 
+            matInput
+            [formControl]="keywordCtrl"
+            [placeholder]="options.filterLabel"
+        />
+        <mat-icon 
+          class="grey-fg s-16" 
+          [fxHide]="keywordCtrl.value === ''" 
+          matSuffix 
+          (click)="clearFilter()">
+          close
+        </mat-icon>
+      </mat-form-field>
+
+      <button
+        mat-icon-button
+        class="green-600-fg pt-12 ml-8 mr-4" 
+        (click) = "downloadXls()"
+        matTooltip="Exportar a Excel"
+        *ngIf="options.exportable"
+      >
+        <mat-icon>cloud_download</mat-icon>
+      </button>
+    </div>
+    <!-- / SEARCH AND EXPORT -->
+
+    <!-- DATA TABLE -->
+    <table mat-table *ngIf="dataSource.data.length !== 0" [dataSource]="dataSource" matSort mat-elevation-z1>
+  
+      <ng-container 
+        *ngFor="let column of (columns$ | async); let i = index" 
+        [matColumnDef]="column">
+  
+        <!-- HEADER -->
+        <th mat-header-cell *matHeaderCellDef mat-sort-header >
+          {{getColumnHeader(column)}}
+        </th>
+        <!-- / HEADER -->
+  
+        <!-- ROWS -->
+        <td mat-cell *matCellDef="let element" [ngClass]="{'text-right': column.indexOf('|currency') != -1}">
+          {{getElement(element[column], column)}}
+        </td>
+        <!-- / ROWS -->
+  
+        <!-- FOOTER DEFINITION -->
+        <td mat-footer-cell *matFooterCellDef >
+          <b *ngIf="i == 0">
+            Totales
+          </b>
+          <b *ngIf="i > 0 && options.showTotals">
+            {{getTotal(column) | currency}}
+          </b>
+        </td>
+        <!-- / FOOTER DEFINITION -->
+  
+      </ng-container>
+  
+      <!-- HEADER DISPLAYER -->
+      <tr mat-header-row *matHeaderRowDef="(columns$ | async)"></tr>
+      <!-- / HEADER DISPLAYER -->
+  
+      <!-- ROW DISPLAYER -->
+      <tr mat-row *matRowDef="let row; columns: (columns$ | async)"></tr>
+      <!-- / ROW DISPLAYER -->
+  
+      <!-- FOOTER DISPLAYER -->
+      <ng-container *ngIf="options.showTotals">
+        <tr mat-footer-row *matFooterRowDef="(columns$ | async)"></tr>
+      </ng-container>
+      <!-- / FOOTER DISPLAYER -->
+    </table>
+
+    <!-- EMPTY MESSAGE -->
+    <div class="empty mat-table" *ngIf="dataSource.data.length === 0" fxLayoutAlign="center center">
+      No hay datos a mostrar
+    </div>
+    <!-- / EMPTY MESSAGE -->
+  
+    <!-- PAGINATOR -->
+    <mat-paginator #tablePaginator [fxHide]="!dataSource || dataSource.data.length == 0 || options.pageSize == 0"  [pageSize]="options.pageSize" [pageSizeOptions]="[5, 20, 50, 100]">
+    </mat-paginator>
+    <!-- / PAGINATOR -->
+    
+    <!-- / DATA TABLE -->
+
+  </div>
+
+</div>

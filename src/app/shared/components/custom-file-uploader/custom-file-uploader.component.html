@@ -1,0 +1,65 @@
+<div id="file-uploader">
+  <!-- <div>
+    <mat-progress-bar color="accent" mode="determinate" [value]="progress"></mat-progress-bar>
+    <b>
+      {{progress}} %
+    </b>
+  </div> -->
+  
+  <div *ngIf="this.fileSelected && (uploader.isUploading || uploadComplete)" >
+    <div class="w-56">
+      <mat-progress-spinner  [diameter]="56" color="accent" mode="determinate" [value]="progress">
+      </mat-progress-spinner>
+      <div style="position:relative; top: -37px; right: -9px;" class="progress-value">
+        <span *ngIf="!uploadComplete">{{progress}}%</span>
+        <mat-icon *ngIf="uploadComplete" class="s-28">check</mat-icon>
+      </div>
+    </div>
+  </div>
+
+  <button 
+    mat-fab 
+    matTooltip="Seleccionar archivo"
+    (click)="openFolder()"
+    *ngIf="!uploader.isUploading && !fileSelected" 
+    >
+    <mat-icon>attach_file</mat-icon>
+  </button>
+
+  <button 
+    mat-fab 
+    class="accent hide" 
+    id="uploadBtn"
+    [matTooltip]="customUpload ? '' : 'Subir archivo'"
+    [ngClass]="{'no-cursor': customUpload}"
+    *ngIf="(!uploader.isUploading && fileSelected && !uploadComplete)"
+    (click)="upload()"
+    >
+    <mat-icon>
+      {{customUpload ? 'thumb_up' : 'cloud_upload'}}
+    </mat-icon>
+  </button>
+
+  <button 
+    id="custom-attachment-file-button"
+    mat-icon-button 
+    class="cancel-button warn"     
+    (click)="cancel()"
+    *ngIf="!uploader.isUploading && fileSelected && !uploadComplete"
+    matTooltip="Cancelar"
+    >
+    <mat-icon class="s-16">close</mat-icon>
+  </button>
+
+  <input 
+    #uploadInput 
+    type="file" 
+    name="photo" 
+    ng2FileSelect 
+    [uploader]="uploader"
+    [accept]="validTypes"
+    style=" display: none"
+    (change)="onFileSelected($event)" 
+  />
+ 
+</div>

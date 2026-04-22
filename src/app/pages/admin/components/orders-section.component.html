@@ -1,0 +1,109 @@
+<div class="section-card">
+  <div class="section-card__header">
+    <h2>Gestión de pedidos</h2>
+  </div>
+
+  <div class="status-tabs">
+    <button *ngFor="let tab of tabs" class="status-tab" [class.active]="activeTab === tab.key" (click)="setTab(tab.key)">
+      {{ tab.label }}
+      <span class="status-tab-count">{{ countByStatus(tab.key) }}</span>
+    </button>
+  </div>
+
+  <dynamic-table
+    [columns]="columns"
+    [data]="filtered$"
+    [isSelectable]="true"
+    [canFilter]="true"
+    [filterTitle]="'Buscar pedido, cliente…'"
+    [pageSize]="10"
+    [emptyLabel]="'No hay pedidos con este estado'"
+    (onSelectItem)="openDetail($event)"
+  ></dynamic-table>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" *ngIf="selectedOrder" (click)="closeDetail()">
+  <div class="order-modal" (click)="$event.stopPropagation()">
+
+    <div class="order-modal__header">
+      <div class="order-modal__title">
+        <span class="order-id-chip">{{ selectedOrder.id }}</span>
+        <span class="order-date">{{ selectedOrder.createdAt }}</span>
+        <span class="status-pill status-pill--{{selectedOrder.status}}">
+          {{ statusLabels[selectedOrder.status] }}
+        </span>
+      </div>
+      <button class="btn-close" (click)="closeDetail()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="order-modal__body">
+
+      <!-- Customer + Payment -->
+      <div class="order-grid-2">
+        <div class="order-block">
+          <h4>Cliente</h4>
+          <p class="ob-name">{{ selectedOrder.customerName }}</p>
+          <p class="ob-sub">{{ selectedOrder.customerEmail }}</p>
+        </div>
+        <div class="order-block">
+          <h4>Pago</h4>
+          <p class="ob-name">{{ selectedOrder.paymentMethod }}</p>
+          <p class="ob-sub" *ngIf="selectedOrder.trackingNumber">Seguimiento: {{ selectedOrder.trackingNumber }}</p>
+        </div>
+      </div>
+
+      <!-- Address -->
+      <div class="order-block" *ngIf="selectedOrder.address">
+        <h4>Dirección de envío</h4>
+        <p class="ob-sub">{{ selectedOrder.address }}, {{ selectedOrder.city }}, {{ selectedOrder.country }}</p>
+      </div>
+
+      <!-- Items -->
+      <div class="order-block">
+        <h4>Artículos ({{ selectedOrder.items.length }})</h4>
+        <div class="order-items">
+          <div class="order-item-row" *ngFor="let item of selectedOrder.items">
+            <div class="order-item-info">
+              <span class="oi-name">{{ item.name }}</span>
+              <span class="oi-sku">{{ item.sku }}</span>
+            </div>
+            <span class="oi-qty">× {{ item.qty }}</span>
+            <span class="oi-price">${{ item.price * item.qty | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Totals -->
+      <div class="order-totals">
+        <div class="ot-row"><span>Subtotal</span><span>${{ selectedOrder.subtotal | number:'1.2-2' }}</span></div>
+        <div class="ot-row" *ngIf="selectedOrder.discount > 0"><span>Descuento</span><span class="ot-discount">−${{ selectedOrder.discount | number:'1.2-2' }}</span></div>
+        <div class="ot-row" *ngIf="selectedOrder.shipping > 0"><span>Envío</span><span>${{ selectedOrder.shipping | number:'1.2-2' }}</span></div>
+        <div class="ot-row ot-row--total"><span>Total</span><span>${{ selectedOrder.total | number:'1.2-2' }}</span></div>
+      </div>
+
+      <!-- Status actions -->
+      <div class="order-actions" *ngIf="nextStatuses().length > 0">
+        <h4>Cambiar estado</h4>
+        <div class="actions-row">
+          <div class="tracking-wrap" *ngIf="selectedOrder.status === 'processing'">
+            <input type="text" [(ngModel)]="trackingInput" placeholder="Número de seguimiento (opcional)">
+          </div>
+          <button *ngFor="let s of nextStatuses()" class="btn-status btn-status--{{s}}" (click)="updateStatus(s)">
+            {{ statusLabels[s] }}
+          </button>
+        </div>
+      </div>
+      <div class="order-final-msg" *ngIf="nextStatuses().length === 0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <ng-container *ngIf="selectedOrder.status === 'delivered'"><polyline points="20 6 9 17 4 12"/></ng-container>
+          <ng-container *ngIf="selectedOrder.status === 'cancelled'"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></ng-container>
+        </svg>
+        Pedido {{ selectedOrder.status === 'delivered' ? 'entregado' : 'cancelado' }} — no hay más acciones disponibles.
+      </div>
+
+    </div>
+  </div>
+</div>

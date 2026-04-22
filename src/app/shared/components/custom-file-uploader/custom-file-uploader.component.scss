@@ -1,0 +1,34 @@
+#file-uploader{
+    width: 96px;
+    height: 96px;
+    padding-top: 10px;
+
+    .progress-value{
+        font-weight: 800;
+        font-size: 14px;
+
+        .mat-icon{
+            position: relative;
+            top: -6px;
+            left: 6px;    
+            color: #24a824 !important;
+        }
+    }
+
+    .cancel-button{
+        position: relative;
+        left: -22px;
+        top: -16px;
+        width: 20px;
+        height: 20px;
+
+        .mat-icon{
+            position: relative;
+            top: -11px;
+        }
+    }
+
+    .no-cursor{
+        cursor: default;
+    }
+}

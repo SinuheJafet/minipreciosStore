@@ -1,0 +1,24 @@
+<!-- SIDE CONTAINER HEADER -->
+<div [ngClass]="{'header': showHeader, 'headerAlt': !showHeader}" fxLayout="row" fxLayoutAlign="start center"  class="title accent" fxLayoutGap="4px">
+  <button mat-icon-button [matTooltip]="tooltip" (click)="back()" *ngIf="showBackButton">
+    <mat-icon>
+      keyboard_backspace
+    </mat-icon>
+  </button>
+  <div fxLayout="column" fxLayoutAlign="center start" >
+    <span class="h3">{{title}}</span>
+    <span class="h5 subtitle">
+      <span>{{subtitle}}</span>
+    </span>
+  </div>
+
+</div>
+<!-- / SIDE CONTAINER HEADER -->
+
+<!-- SIDE CONTAINER CONTENT -->
+<div class="content p-24" fxLayout="column" fusePerfectScrollbar>
+  <div #sideContent [fxHide]="!shows.sideContent">
+    <ng-content select="[side-content]"></ng-content>
+  </div>
+</div>
+<!-- / SIDE CONTAINER CONTENT -->

@@ -1,0 +1,139 @@
+<div class="section-card">
+  <div class="section-card__header">
+    <h2>Gestión de productos</h2>
+    <button class="btn-add" (click)="openCreate()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo producto
+    </button>
+  </div>
+
+  <dynamic-table
+    [columns]="columns"
+    [data]="products"
+    [checkable]="true"
+    [isSelectable]="false"
+    [canFilter]="true"
+    [filterTitle]="'Buscar producto, SKU…'"
+    [pageSize]="10"
+    [allowXlsExport]="true"
+    [rowIdKey]="'id'"
+    [emptyLabel]="'No hay productos'"
+    (checkedChange)="onChecked($event)"
+  ></dynamic-table>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h3>{{ isEdit ? 'Editar producto' : 'Nuevo producto' }}</h3>
+      <button class="btn-close" (click)="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+
+      <div class="form-row">
+        <div class="field">
+          <label>Nombre <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="form.name" placeholder="Ej. Café Orgánico 500g">
+        </div>
+        <div class="field">
+          <label>Marca <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="form.brand" placeholder="Ej. EcoBeans">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>SKU <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="form.sku" placeholder="Ej. ECO-CAFE-500">
+        </div>
+        <div class="field">
+          <label>Categoría <span class="req">*</span></label>
+          <select [(ngModel)]="form.category">
+            <option value="" disabled>Selecciona…</option>
+            <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Descripción</label>
+        <textarea [(ngModel)]="form.description" rows="2" placeholder="Descripción del producto…"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Precio <span class="req">*</span></label>
+          <div class="input-prefix">
+            <span>$</span>
+            <input type="number" [(ngModel)]="form.price" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <div class="field">
+          <label>Precio original <small>(antes del descuento)</small></label>
+          <div class="input-prefix">
+            <span>$</span>
+            <input type="number" [(ngModel)]="form.originalPrice" min="0" placeholder="0.00">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Stock inicial <span class="req">*</span></label>
+          <input type="number" [(ngModel)]="form.stock" min="0" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Volumen / Contenido</label>
+          <input type="text" [(ngModel)]="form.volume" placeholder="Ej. 500g, 1L">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Badge</label>
+          <select [(ngModel)]="form.badge">
+            <option *ngFor="let b of badges" [value]="b.value">{{ b.label }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tags <small>(separados por coma)</small></label>
+          <input type="text" [(ngModel)]="form.tags" placeholder="Ej. café, orgánico, arábica">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>URL de imagen principal</label>
+        <input type="text" [(ngModel)]="form.imageUrl" placeholder="https://…">
+        <div class="img-preview" *ngIf="form.imageUrl">
+          <img [src]="form.imageUrl" alt="Preview" (error)="form.imageUrl=''">
+        </div>
+      </div>
+
+      <div class="modal__footer">
+        <button class="btn-cancel" (click)="closeModal()">Cancelar</button>
+        <button class="btn-save" (click)="saveProduct()" [disabled]="!form.name || !form.sku || !form.price">
+          {{ isEdit ? 'Guardar cambios' : 'Crear producto' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+  <div class="confirm-dialog" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <h3>¿Eliminar producto?</h3>
+    <p>Se desactivará <strong>{{ deletingProduct?.name }}</strong>. Esta acción no se puede deshacer.</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" (click)="cancelDelete()">Cancelar</button>
+      <button class="btn-danger" (click)="doDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,104 @@
+.file-list{
+
+    .evidence-button{
+        width: 56px;
+        height: 72px;
+    }
+    
+    .evidence-title{
+        font: 400 13px/1.125 Muli, Helvetica Neue, Arial, sans-serif;
+        color: rgba(0, 0, 0, 0.6);
+    }
+
+
+        .cancel-button{
+            position: relative;
+            left: 40px;
+            top: -60px;
+            width: 20px;
+            height: 20px;
+            .mat-icon{
+                position: relative;
+                top: -11px;
+            }
+        }
+
+
+    .change-delete{
+    color: rgba(0, 0, 0, 0.6);
+    }
+
+    .upload-control{
+        margin-top: 4px;
+    }
+
+    .custom-avatar{
+        width: 56px;
+        min-width: 56px;
+        height: 56px;
+        line-height: 40px;
+        margin: 0 8px 0 0;
+        border-radius: 50%;
+        font-size: 17px;
+        font-weight: 600;
+        text-align: center;
+        margin-top: 14px;
+        background: url(https://media1.tenor.com/images/556e9ff845b7dd0c62dcdbbb00babb4b/tenor.gif) no-repeat center;
+        background-size: 130px 130px;
+    }
+    .frame-custom-avatar{
+        width: 56px;
+        min-width: 56px;
+        height: 56px;
+        line-height: 40px;
+        margin: 0 24px 0 0;
+        border-radius: 10%;
+        font-size: 17px;
+        font-weight: 600;
+        text-align: center;
+        margin-top: 14px;
+        background: url(https://media1.tenor.com/images/556e9ff845b7dd0c62dcdbbb00babb4b/tenor.gif) no-repeat center;
+        background-size: 130px 130px;
+    }
+.styled-textarea {
+        width: 100%; /* Ocupa todo el ancho disponible */
+        //max-width: 600px; /* Limita el ancho máximo */
+        margin: 20px auto; /* Centra el textarea y agrega margen */
+        padding: 10px; /* Espaciado interno */
+        border: 1px solid #ccc; /* Borde suave */
+        border-radius: 5px; /* Bordes redondeados */
+        font-family: Arial, sans-serif; /* Fuente legible */
+        font-size: 14px; /* Tamaño de fuente */
+        resize: vertical; /* Permite redimensionar verticalmente */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave */
+    }
+    
+    .styled-textarea:focus {
+        border-color: #007bff; /* Cambia el color del borde al enfocar */
+        outline: none; /* Elimina el contorno predeterminado */
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Sombra al enfocar */
+    }
+    
+
+    .frame-cancel-button{
+        position: relative;
+        left: 128px;
+        top:30px;
+        width: 30px;
+        height: 28px;
+        .mat-icon{
+            position: relative;
+            top: -11px;
+        }
+    }    
+    .h1{
+        font-weight: 400;
+        font-size: 22px;
+    }
+
+    .secondary-text{
+        color: grey !important;
+
+    }
+    
+}

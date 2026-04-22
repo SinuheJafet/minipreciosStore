@@ -1,0 +1,39 @@
+@import "src/app/shared/styles/fuse";
+
+#data-viewer{
+    width: 100%;
+    .content{
+        min-width: 100%;
+        
+        .search-container{
+            padding: 10px 10px 0px 10px;
+            .mat-icon{
+                cursor: pointer;
+            }
+        }
+    
+        .mat-table{
+            min-width: 100%;
+            border:  1px solid #e0e0e0;
+            
+            .mat-row{
+                &:hover{
+                    // cursor: pointer;
+                    background-color: #e0e0e0;
+                }
+                &.row-selected{
+                    background-color: #e0e0e0;
+                }
+            }
+        }
+
+        .empty{
+            padding: 15px 10px;
+            font-size: 1.7em;
+            width: 100%;
+            text-align: center;
+            color: #6a6a6a;
+            font-style: italic;
+        }
+    }
+}
