@@ -1,15 +1,19 @@
-import { Component, Input } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 import { InventoryMovement } from '../../../models/admin.model';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
+import { InventoryAdminService } from '../services/inventory-admin.service';
 
 @Component({
   selector: 'admin-movements-section',
   templateUrl: './movements-section.component.html',
   styleUrls: ['./movements-section.component.scss']
 })
-export class MovementsSectionComponent {
-  @Input() movements!: Observable<InventoryMovement[]>;
+export class MovementsSectionComponent implements OnInit {
+  movements!: Observable<InventoryMovement[]>;
+
+  constructor(private svc: InventoryAdminService) {}
+  ngOnInit(): void { this.movements = this.svc.getMovements(); }
 
   columns: ColumnSource[] = [
     { columnDef: 'createdAt', headerName: 'Fecha', cell: (r: InventoryMovement) => r.createdAt.substring(0, 10) },

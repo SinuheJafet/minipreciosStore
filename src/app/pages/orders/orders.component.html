@@ -1,28 +1,43 @@
 <div class="orders-page">
   <h1>Mis pedidos</h1>
+
   <div *ngIf="loading" class="loading">Cargando pedidos...</div>
+
   <div *ngIf="!loading && orders.length === 0" class="empty">
     <p>No tienes pedidos aún.</p>
     <a routerLink="/products">Explorar productos</a>
   </div>
+
   <div *ngIf="!loading && orders.length > 0">
     <div class="order-card" *ngFor="let order of orders">
+
       <div class="order-header">
         <span class="order-id">Pedido #{{ order.id }}</span>
-        <span class="order-status status-{{ order.status }}">{{ order.status }}</span>
-        <span class="order-date">{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+        <span class="order-status status-{{ order.status }}">
+          {{ statusLabel[order.status] || order.status }}
+        </span>
+        <span class="order-date">{{ order.createdAt }}</span>
       </div>
+
       <div class="order-items">
         <div *ngFor="let item of order.items" class="order-item">
-          <span>{{ item.product.name }}</span>
-          <span>x{{ item.quantity }}</span>
-          <span>{{ item.product.price | currency:'EUR':'symbol':'1.2-2' }}</span>
+          <img *ngIf="item.image" [src]="item.image" [alt]="item.name" class="order-item__img">
+          <span class="order-item__name">{{ item.name }}</span>
+          <span class="order-item__qty">x{{ item.qty }}</span>
+          <span class="order-item__price">{{ item.price | currency:'EUR':'symbol':'1.2-2' }}</span>
         </div>
       </div>
-      <div class="order-total">
-        <span>Total:</span>
-        <span>{{ order.total | currency:'EUR':'symbol':'1.2-2' }}</span>
+
+      <div class="order-footer">
+        <span *ngIf="order.trackingNumber" class="order-tracking">
+          Tracking: <strong>{{ order.trackingNumber }}</strong>
+        </span>
+        <div class="order-total">
+          <span>Total:</span>
+          <strong>{{ order.total | currency:'EUR':'symbol':'1.2-2' }}</strong>
+        </div>
       </div>
+
     </div>
   </div>
 </div>

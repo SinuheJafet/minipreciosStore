@@ -1,7 +1,8 @@
-import { Component, Input, OnInit } from '@angular/core';
-import { Observable } from 'rxjs';
-import { Product } from '../../../models/product.model';
+import { Component, OnInit } from '@angular/core';
 import { SaleCartItem } from '../../../models/admin.model';
+import { Product } from '../../../models/product.model';
+import { OrdersAdminService } from '../services/orders-admin.service';
+import { ProductsAdminService } from '../services/products-admin.service';
 
 type PayStatus = 'paid' | 'pending_transfer';
 
@@ -11,7 +12,7 @@ type PayStatus = 'paid' | 'pending_transfer';
   styleUrls: ['./pos-section.component.scss']
 })
 export class PosSectionComponent implements OnInit {
-  @Input() products!: Observable<Product[]>;
+  constructor(private ordersSvc: OrdersAdminService, private productsSvc: ProductsAdminService) {}
 
   allProducts: Product[] = [];
   filtered: Product[] = [];
@@ -29,7 +30,7 @@ export class PosSectionComponent implements OnInit {
   paymentMethods = ['Efectivo', 'Tarjeta', 'Transferencia', 'PayPal'];
 
   ngOnInit(): void {
-    this.products.subscribe(p => { this.allProducts = p; this.filtered = p; });
+    this.productsSvc.getProducts().subscribe(p => { this.allProducts = p; this.filtered = p; });
   }
 
   filterProducts(): void {
@@ -75,20 +76,22 @@ export class PosSectionComponent implements OnInit {
 
   confirmSale(): void {
     if (!this.cart.length) return;
-    // In production: call SalesService / OrdersService with payload
-    const orderId = 'ORD-' + String(Date.now()).slice(-4);
-    this.confirmedOrderId = orderId;
-    this.saleConfirmed = true;
-    setTimeout(() => {
-      this.cart = [];
-      this.discount = 0;
-      this.customerName = '';
-      this.customerPhone = '';
-      this.notes = '';
-      this.paymentMethod = 'Efectivo';
-      this.payStatus = 'paid';
-      this.saleConfirmed = false;
-      this.confirmedOrderId = '';
-    }, 3500);
+    const dto = {
+      items: this.cart.map(c => ({ productId: c.productId, quantity: c.qty })),
+      discountPercent: this.discount,
+      paymentMethod: this.paymentMethod,
+      customerName: this.customerName || 'Cliente mostrador',
+      status: this.orderStatus,
+    };
+    this.ordersSvc.addSale(dto).subscribe(res => {
+      this.confirmedOrderId = res?.id ?? ('POS-' + String(Date.now()).slice(-4));
+      this.saleConfirmed = true;
+      setTimeout(() => {
+        this.cart = []; this.discount = 0; this.customerName = '';
+        this.customerPhone = ''; this.notes = '';
+        this.paymentMethod = 'Efectivo'; this.payStatus = 'paid';
+        this.saleConfirmed = false; this.confirmedOrderId = '';
+      }, 3500);
+    });
   }
 }

@@ -1,15 +1,38 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, catchError, of } from 'rxjs';
 import { AdminUser } from '../../../models/admin.model';
+import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class UsersAdminService {
+  private _data = new BehaviorSubject<AdminUser[]>([]);
+  private api = `${environment.apiUrl}/users`;
+
+  constructor(private http: HttpClient) {}
+
   getUsers(): Observable<AdminUser[]> {
-    return of([
-      { id: 1, name: 'Carlos Ruiz', email: 'carlos@miniprecios.com', role: 'admin',   isActive: true,  createdAt: '2026-01-10', lastLogin: '2026-04-22' },
-      { id: 2, name: 'María López', email: 'maria@miniprecios.com',  role: 'manager', isActive: true,  createdAt: '2026-02-01', lastLogin: '2026-04-21' },
-      { id: 3, name: 'Pedro Gómez', email: 'pedro@miniprecios.com',  role: 'cashier', isActive: true,  createdAt: '2026-02-15', lastLogin: '2026-04-20' },
-      { id: 4, name: 'Ana Torres',  email: 'ana@miniprecios.com',    role: 'viewer',  isActive: false, createdAt: '2026-03-01', lastLogin: '2026-04-01' },
-    ]);
+    this.load();
+    return this._data.asObservable();
+  }
+
+  add(user: Omit<AdminUser, 'id' | 'createdAt' | 'lastLogin'>): void {
+    this.http.post<AdminUser>(this.api, user).pipe(catchError(() => of(null)))
+      .subscribe(() => this.load());
+  }
+
+  update(id: number, patch: Partial<AdminUser>): void {
+    this.http.put<AdminUser>(`${this.api}/${id}`, patch).pipe(catchError(() => of(null)))
+      .subscribe(() => this.load());
+  }
+
+  remove(id: number): void {
+    this.http.delete(`${this.api}/${id}`).pipe(catchError(() => of(null)))
+      .subscribe(() => this.load());
+  }
+
+  private load(): void {
+    this.http.get<AdminUser[]>(this.api).pipe(catchError(() => of([] as AdminUser[])))
+      .subscribe(list => this._data.next(list));
   }
 }

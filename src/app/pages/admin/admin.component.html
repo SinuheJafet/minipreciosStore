@@ -78,19 +78,33 @@
           <span>Usuarios y Roles</span>
         </button>
 
+        <button class="sidebar-nav__item" [class.active]="activeSection==='customers'" (click)="navigate('customers')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Clientes</span>
+        </button>
+
+        <div class="sidebar-divider"></div>
+
+        <button class="sidebar-nav__item" [class.active]="activeSection==='banners'" (click)="navigate('banners')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
+          <span>Publicidad</span>
+        </button>
+
       </nav>
     </aside>
 
     <!-- ── Main content ──────────────────────────────────────────── -->
     <main class="admin-content">
 
-      <admin-dashboard-section  *ngIf="activeSection==='dashboard'"  [stats]="stats$" [recentOrders]="orders$" [lowStock]="inventory$"></admin-dashboard-section>
-      <admin-pos-section        *ngIf="activeSection==='pos'"         [products]="products$"></admin-pos-section>
-      <admin-orders-section     *ngIf="activeSection==='orders'"      [orders]="orders$"></admin-orders-section>
-      <admin-products-section   *ngIf="activeSection==='products'"    [products]="products$"></admin-products-section>
-      <admin-inventory-section  *ngIf="activeSection==='inventory'"   [products]="inventory$" [allProducts]="products$"></admin-inventory-section>
-      <admin-movements-section  *ngIf="activeSection==='movements'"   [movements]="movements$"></admin-movements-section>
-      <admin-users-section      *ngIf="activeSection==='users'"        [users]="users$"></admin-users-section>
+      <admin-dashboard-section  *ngIf="activeSection==='dashboard'"></admin-dashboard-section>
+      <admin-pos-section        *ngIf="activeSection==='pos'"></admin-pos-section>
+      <admin-orders-section     *ngIf="activeSection==='orders'"></admin-orders-section>
+      <admin-products-section   *ngIf="activeSection==='products'"></admin-products-section>
+      <admin-inventory-section  *ngIf="activeSection==='inventory'"></admin-inventory-section>
+      <admin-movements-section  *ngIf="activeSection==='movements'"></admin-movements-section>
+      <admin-users-section      *ngIf="activeSection==='users'"></admin-users-section>
+      <admin-customers-section  *ngIf="activeSection==='customers'"></admin-customers-section>
+      <admin-banners-section    *ngIf="activeSection==='banners'"></admin-banners-section>
 
     </main>
   </div>

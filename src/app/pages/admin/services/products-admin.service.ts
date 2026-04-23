@@ -1,65 +1,44 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { ApiService } from '../../../shared/services/api.service';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { BehaviorSubject, Observable, catchError, of } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Product } from 'src/app/models/product.model';
+import { environment } from '../../../../environments/environment';
+
+interface PagedResponse<T> { data: T[]; total: number; page: number; pageSize: number; }
 
 @Injectable({ providedIn: 'root' })
 export class ProductsAdminService {
-  private baseUrl = '/api/products';
+  private _data = new BehaviorSubject<Product[]>([]);
+  private api = `${environment.apiUrl}/products`;
 
-  constructor(private api: ApiService) {}
+  constructor(private http: HttpClient) {}
 
   getProducts(): Observable<Product[]> {
-    // MOCK: Devuelve productos de ejemplo si no hay backend
-    return of([
-      {
-        id: 1,
-        name: 'Café Orgánico',
-        description: 'Café 100% arábica, orgánico, 500g',
-        price: 120,
-        images: [],
-        category: 'Bebidas',
-        brand: 'EcoBeans',
-        rating: 4.7,
-        reviews: 12,
-        stock: 8,
-        badge: 'bestseller',
-        tags: ['café', 'orgánico'],
-        sku: 'ECO-CAFE-500',
-      },
-      {
-        id: 2,
-        name: 'Aceite de Oliva Extra Virgen',
-        description: 'Botella 1L, prensado en frío',
-        price: 210,
-        images: [],
-        category: 'Aceites',
-        brand: 'Olivar',
-        rating: 4.9,
-        reviews: 8,
-        stock: 3,
-        badge: 'sale',
-        tags: ['aceite', 'oliva'],
-        sku: 'OLIVAR-1L',
-      }
-    ]);
-    // Para producción, usar:
-    // return this.api.get<Product[]>(this.baseUrl);
+    this.load();
+    return this._data.asObservable();
   }
 
-  getProduct(id: number): Observable<Product> {
-    return this.api.get<Product>(`${this.baseUrl}/${id}`);
+  private load(): void {
+    const p = new HttpParams().set('pageSize', 200);
+    this.http.get<PagedResponse<Product>>(this.api, { params: p }).pipe(
+      map(res => res.data),
+      catchError(() => of([] as Product[]))
+    ).subscribe(data => this._data.next(data));
   }
 
-  createProduct(product: Product): Observable<Product> {
-    return this.api.post<Product>(this.baseUrl, product);
+  add(product: Omit<Product, 'id'>): void {
+    this.http.post<Product>(this.api, product).pipe(catchError(() => of(null)))
+      .subscribe(() => this.load());
   }
 
-  updateProduct(id: number, product: Partial<Product>): Observable<Product> {
-    return this.api.put<Product>(`${this.baseUrl}/${id}`, product);
+  update(id: number, patch: Partial<Product>): void {
+    this.http.put<Product>(`${this.api}/${id}`, patch).pipe(catchError(() => of(null)))
+      .subscribe(() => this.load());
   }
 
-  deleteProduct(id: number): Observable<void> {
-    return this.api.delete<void>(`${this.baseUrl}/${id}`);
+  remove(id: number): void {
+    this.http.delete(`${this.api}/${id}`).pipe(catchError(() => of(null)))
+      .subscribe(() => this.load());
   }
 }

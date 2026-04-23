@@ -1,0 +1,127 @@
+<div class="customers">
+
+  <!-- Summary cards -->
+  <div class="cust-kpi-row">
+    <div class="cust-kpi">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <div>
+        <span class="cust-kpi__val">{{ allCustomers.length }}</span>
+        <span class="cust-kpi__lbl">Clientes registrados</span>
+      </div>
+    </div>
+    <div class="cust-kpi">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      <div>
+        <span class="cust-kpi__val">{{ activeCount }}</span>
+        <span class="cust-kpi__lbl">Clientes activos</span>
+      </div>
+    </div>
+    <div class="cust-kpi">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <div>
+        <span class="cust-kpi__val">{{ repeatCount }}</span>
+        <span class="cust-kpi__lbl">Clientes recurrentes</span>
+      </div>
+    </div>
+    <div class="cust-kpi cust-kpi--purple">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <div>
+        <span class="cust-kpi__val">${{ totalRevenue | number:'1.0-0' }}</span>
+        <span class="cust-kpi__lbl">Ingreso total generado</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="section-card">
+    <div class="section-card__header">
+      <h2>Clientes del ecommerce</h2>
+      <span class="header-note">Registros desde la tienda online</span>
+    </div>
+    <dynamic-table
+      [columns]="columns"
+      [data]="customers"
+      [isSelectable]="true"
+      [canFilter]="true"
+      [filterTitle]="'Buscar cliente, email, ciudad…'"
+      [pageSize]="10"
+      [allowXlsExport]="true"
+      [emptyLabel]="'No hay clientes registrados'"
+      (onSelectItem)="openDetail($event)"
+    ></dynamic-table>
+  </div>
+</div>
+
+<!-- Customer Detail Panel -->
+<div class="modal-overlay" *ngIf="selectedCustomer" (click)="closeDetail()">
+  <div class="cust-modal" (click)="$event.stopPropagation()">
+
+    <div class="cust-modal__header">
+      <div class="cust-avatar">{{ selectedCustomer.name[0].toUpperCase() }}</div>
+      <div class="cust-modal__info">
+        <h3>{{ selectedCustomer.name }}</h3>
+        <span>{{ selectedCustomer.email }}</span>
+      </div>
+      <span class="cust-status-pill" [class.active]="selectedCustomer.isActive">
+        {{ selectedCustomer.isActive ? 'Activo' : 'Inactivo' }}
+      </span>
+      <button class="btn-close" (click)="closeDetail()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="cust-modal__body">
+
+      <div class="cust-stats-row">
+        <div class="cust-stat">
+          <span class="cust-stat__val">{{ selectedCustomer.totalOrders }}</span>
+          <span class="cust-stat__lbl">Pedidos</span>
+        </div>
+        <div class="cust-stat cust-stat--purple">
+          <span class="cust-stat__val">${{ selectedCustomer.totalSpent | number:'1.0-0' }}</span>
+          <span class="cust-stat__lbl">Total gastado</span>
+        </div>
+        <div class="cust-stat">
+          <span class="cust-stat__val">${{ (selectedCustomer.totalSpent / (selectedCustomer.totalOrders || 1)) | number:'1.0-0' }}</span>
+          <span class="cust-stat__lbl">Ticket promedio</span>
+        </div>
+      </div>
+
+      <div class="cust-detail-grid">
+        <div class="cust-detail-block">
+          <h4>Contacto</h4>
+          <div class="cust-detail-row" *ngIf="selectedCustomer.phone">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 11.5 19.79 19.79 0 0 1 1.6 2.9 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6.06 6.06l1.87-1.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span>{{ selectedCustomer.phone }}</span>
+          </div>
+          <div class="cust-detail-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span>{{ selectedCustomer.email }}</span>
+          </div>
+          <div class="cust-detail-row" *ngIf="selectedCustomer.city">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>{{ selectedCustomer.city }}, {{ selectedCustomer.country }}</span>
+          </div>
+        </div>
+
+        <div class="cust-detail-block">
+          <h4>Actividad</h4>
+          <div class="cust-detail-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Registro: <strong>{{ selectedCustomer.registeredAt }}</strong></span>
+          </div>
+          <div class="cust-detail-row" *ngIf="selectedCustomer.lastOrderAt">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Último pedido: <strong>{{ selectedCustomer.lastOrderAt }}</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cust-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Para ver el historial completo de pedidos de este cliente, ve a <strong>Pedidos</strong> y filtra por su email.
+      </div>
+
+    </div>
+  </div>
+</div>

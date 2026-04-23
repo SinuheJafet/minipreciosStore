@@ -1,11 +1,12 @@
 <div class="section-card">
   <div class="section-card__header">
     <h2>Usuarios y Roles</h2>
-    <button class="btn-add" (click)="addUser()">
+    <button class="btn-add" (click)="openCreate()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Nuevo usuario
     </button>
   </div>
+
   <dynamic-table
     [columns]="columns"
     [data]="users"
@@ -15,4 +16,100 @@
     [pageSize]="10"
     [emptyLabel]="'Sin usuarios registrados'"
   ></dynamic-table>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+
+    <div class="modal__header">
+      <h3>{{ isEdit ? 'Editar usuario' : 'Nuevo usuario' }}</h3>
+      <button class="btn-close" (click)="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal__body">
+
+      <div class="form-row">
+        <div class="field">
+          <label>Nombre completo <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="form.name" placeholder="Ej. María López">
+        </div>
+        <div class="field">
+          <label>Correo electrónico <span class="req">*</span></label>
+          <input type="email" [(ngModel)]="form.email" placeholder="correo@empresa.com">
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div class="field">
+        <label>
+          {{ isEdit ? 'Nueva contraseña' : 'Contraseña' }}
+          <span class="req" *ngIf="!isEdit">*</span>
+          <span class="optional" *ngIf="isEdit">(dejar vacío para no cambiar)</span>
+        </label>
+        <div class="password-wrap">
+          <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="form.password"
+            placeholder="{{ isEdit ? 'Nueva contraseña…' : 'Mínimo 6 caracteres' }}">
+          <button class="toggle-pass" type="button" (click)="showPassword = !showPassword">
+            <svg *ngIf="!showPassword" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg *ngIf="showPassword"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Role selector -->
+      <div class="field">
+        <label>Rol <span class="req">*</span></label>
+        <div class="role-grid">
+          <button *ngFor="let r of roles" class="role-card"
+            [class.active]="form.role === r.value"
+            [attr.data-role]="r.value"
+            (click)="form.role = r.value">
+            <span class="role-card__label">{{ r.label }}</span>
+            <span class="role-card__desc">{{ r.desc }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Active toggle (edit only) -->
+      <div class="field field--inline" *ngIf="isEdit">
+        <label>Estado de la cuenta</label>
+        <div class="toggle-row">
+          <button class="status-btn" [class.active]="form.isActive" (click)="form.isActive = true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Activo
+          </button>
+          <button class="status-btn status-btn--inactive" [class.active]="!form.isActive" (click)="form.isActive = false">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Inactivo
+          </button>
+        </div>
+      </div>
+
+      <div class="modal__footer">
+        <button class="btn-cancel" (click)="closeModal()">Cancelar</button>
+        <button class="btn-save" (click)="saveUser()" [disabled]="!isFormValid">
+          {{ isEdit ? 'Guardar cambios' : 'Crear usuario' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+  <div class="confirm-dialog" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+    </div>
+    <h3>¿Eliminar usuario?</h3>
+    <p>Se desactivará la cuenta de <strong>{{ deletingUser?.name }}</strong>. Podrás reactivarla más adelante.</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" (click)="cancelDelete()">Cancelar</button>
+      <button class="btn-danger" (click)="doDelete()">Eliminar</button>
+    </div>
+  </div>
 </div>

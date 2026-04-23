@@ -7,7 +7,6 @@ import { DatePipe } from '@angular/common';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSort, MatSortable } from '@angular/material/sort';
 import { MatPaginator, MatPaginatorIntl } from '@angular/material/paginator';
-import { MatTable } from '@angular/material/table';
 
 @Component({
   selector: 'dynamic-table',
@@ -56,7 +55,6 @@ export class DynamicTableComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('tablePaginator') paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
-  @ViewChild(MatTable) private _matTable!: MatTable<any>;
 
   filter: string = '';
   displayedColumns: string[] = [];
@@ -154,7 +152,6 @@ export class DynamicTableComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    // Wire paginator and sort first
     if (!this.hidePaginator && this.paginator) {
       this.dataSource.paginator = this.paginator;
     }
@@ -162,18 +159,15 @@ export class DynamicTableComponent implements OnInit, AfterViewInit, OnDestroy {
       this.dataSource.sort = this._defineSort();
     }
 
-    // Suscribirse a los datos y forzar renderizado inmediato
-    this.data.pipe(takeUntil(this._unsuscribeAll)).subscribe(c => {
-      this.dataSource.data = c;
-      if (this.offset > this.total) this.offset = 0;
-      // Forzar renderizado inmediato de la tabla y detección de cambios
-      if (this._matTable && typeof (this._matTable as any).renderRows === 'function') {
-        (this._matTable as any).renderRows();
-      }
-      if (this._matTable && (this._matTable as any)._changeDetectorRef) {
-        (this._matTable as any)._changeDetectorRef.detectChanges();
-      }
-      this.cdr.detectChanges();
+    // Defer past ngAfterViewInit so detectChanges() is never called during a lifecycle hook.
+    // This prevents the silent suppression of change detection that causes rows to only
+    // appear on hover (browser repaint not triggered until user interaction).
+    setTimeout(() => {
+      this.data.pipe(takeUntil(this._unsuscribeAll)).subscribe(rows => {
+        this.dataSource.data = rows ?? [];
+        if (this.offset > this.total) this.offset = 0;
+        this.cdr.detectChanges();
+      });
     });
   }
 

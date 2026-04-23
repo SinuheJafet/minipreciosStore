@@ -1,0 +1,258 @@
+<div class="banners-section">
+
+  <!-- Header -->
+  <div class="section-header">
+    <div class="section-header__left">
+      <h2 class="section-title">Publicidad y Banners</h2>
+      <p class="section-subtitle">Gestiona los banners y promociones de la tienda</p>
+    </div>
+    <button class="btn-primary" (click)="openCreate()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo banner
+    </button>
+  </div>
+
+  <!-- KPI row -->
+  <div class="banner-kpi-row">
+    <div class="banner-kpi">
+      <span class="banner-kpi__val">{{ bannerList.length }}</span>
+      <span class="banner-kpi__label">Total</span>
+    </div>
+    <div class="banner-kpi banner-kpi--green">
+      <span class="banner-kpi__val">{{ activeCount() }}</span>
+      <span class="banner-kpi__label">Activos</span>
+    </div>
+    <div class="banner-kpi banner-kpi--purple">
+      <span class="banner-kpi__val">{{ typeCount('hero') }}</span>
+      <span class="banner-kpi__label">Hero</span>
+    </div>
+    <div class="banner-kpi banner-kpi--teal">
+      <span class="banner-kpi__val">{{ typeCount('promo') }}</span>
+      <span class="banner-kpi__label">Promo bar</span>
+    </div>
+    <div class="banner-kpi banner-kpi--amber">
+      <span class="banner-kpi__val">{{ typeCount('popup') }}</span>
+      <span class="banner-kpi__label">Pop-up</span>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="banner-filter-tabs">
+    <button class="banner-tab" [class.active]="filterType==='all'" (click)="filterType='all'">Todos</button>
+    <button class="banner-tab" [class.active]="filterType==='hero'"  (click)="filterType='hero'">Hero</button>
+    <button class="banner-tab" [class.active]="filterType==='promo'" (click)="filterType='promo'">Promo bar</button>
+    <button class="banner-tab" [class.active]="filterType==='popup'" (click)="filterType='popup'">Pop-up</button>
+  </div>
+
+  <!-- Banner cards grid -->
+  <div class="banner-grid" *ngIf="filtered.length; else emptyState">
+    <div class="banner-card" *ngFor="let b of filtered" [class.inactive]="!b.isActive">
+
+      <!-- Preview -->
+      <div class="banner-preview"
+           [style.background]="b.imageUrl ? 'url(' + b.imageUrl + ') center/cover' : b.bgColor"
+           [class.banner-preview--has-image]="!!b.imageUrl">
+        <div class="banner-preview__overlay" *ngIf="b.imageUrl" [style.background]="b.bgColor + '88'"></div>
+        <div class="banner-preview__content" [style.color]="b.textColor">
+          <span class="banner-preview__title">{{ b.title }}</span>
+          <span class="banner-preview__subtitle" *ngIf="b.subtitle">{{ b.subtitle }}</span>
+          <span class="banner-preview__cta">{{ b.ctaText }}</span>
+        </div>
+        <div class="banner-inactive-overlay" *ngIf="!b.isActive">
+          <span>Inactivo</span>
+        </div>
+      </div>
+
+      <!-- Card info -->
+      <div class="banner-card__body">
+        <div class="banner-card__top">
+          <span class="banner-type-pill"
+                [style.background]="typeColor(b.type)[0]"
+                [style.color]="typeColor(b.type)[1]">
+            {{ typeLabel(b.type) }}
+          </span>
+          <span class="banner-status-pill" [class.active]="b.isActive">
+            {{ b.isActive ? 'Activo' : 'Inactivo' }}
+          </span>
+        </div>
+
+        <p class="banner-card__title">{{ b.title }}</p>
+        <p class="banner-card__meta" *ngIf="b.validFrom || b.validTo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          {{ b.validFrom || '—' }} → {{ b.validTo || '—' }}
+        </p>
+        <p class="banner-card__meta">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          {{ b.ctaLink }}
+        </p>
+
+        <div class="banner-card__actions">
+          <button class="banner-btn banner-btn--toggle" (click)="toggleActive(b)" [title]="b.isActive ? 'Desactivar' : 'Activar'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path *ngIf="b.isActive" d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+              <line *ngIf="b.isActive" x1="12" y1="2" x2="12" y2="12"/>
+              <path *ngIf="!b.isActive" d="M5 12H2M22 12h-3M12 5V2M12 22v-3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+            </svg>
+            {{ b.isActive ? 'Desactivar' : 'Activar' }}
+          </button>
+          <button class="banner-btn banner-btn--edit" (click)="openEdit(b)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar
+          </button>
+          <button class="banner-btn banner-btn--delete" (click)="confirmDelete(b)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <p>No hay banners en esta categoría.</p>
+      <button class="btn-primary btn-sm" (click)="openCreate()">Crear primer banner</button>
+    </div>
+  </ng-template>
+
+</div>
+
+<!-- ── Create / Edit Modal ──────────────────────────────────────── -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()"></div>
+<div class="banner-modal" *ngIf="showModal">
+  <div class="banner-modal__header">
+    <h3>{{ isEdit ? 'Editar banner' : 'Nuevo banner' }}</h3>
+    <button class="modal-close" (click)="closeModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="banner-modal__body">
+
+    <!-- Live preview -->
+    <div class="bm-preview"
+         [style.background]="form.imageUrl ? 'url(' + form.imageUrl + ') center/cover' : form.bgColor">
+      <div class="bm-preview__overlay" *ngIf="form.imageUrl" [style.background]="form.bgColor + '88'"></div>
+      <div class="bm-preview__content" [style.color]="form.textColor">
+        <span class="bm-preview__title">{{ form.title || 'Título del banner' }}</span>
+        <span class="bm-preview__sub">{{ form.subtitle || 'Subtítulo' }}</span>
+        <span class="bm-preview__cta">{{ form.ctaText || 'Botón CTA' }}</span>
+      </div>
+    </div>
+
+    <!-- Form fields -->
+    <div class="bm-form">
+
+      <!-- Type selector -->
+      <div class="bm-field bm-field--full">
+        <label class="bm-label">Tipo</label>
+        <div class="bm-type-btns">
+          <button type="button" class="bm-type-btn"
+                  *ngFor="let t of types"
+                  [class.selected]="form.type === t.value"
+                  (click)="form.type = t.value">
+            {{ t.icon }} {{ t.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="bm-row">
+        <div class="bm-field">
+          <label class="bm-label">Título *</label>
+          <input class="bm-input" [(ngModel)]="form.title" placeholder="Ej: ¡Ofertas de temporada!">
+        </div>
+        <div class="bm-field">
+          <label class="bm-label">Subtítulo</label>
+          <input class="bm-input" [(ngModel)]="form.subtitle" placeholder="Texto secundario">
+        </div>
+      </div>
+
+      <div class="bm-field bm-field--full">
+        <label class="bm-label">Imagen (opcional)</label>
+        <div class="bm-img-row">
+          <input class="bm-input" [(ngModel)]="form.imageUrl" placeholder="https://... o sube un archivo">
+          <label class="bm-btn-upload">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Subir
+            <input type="file" accept="image/*" style="display:none" (change)="onImageFile($event)">
+          </label>
+        </div>
+        <img *ngIf="form.imageUrl" [src]="form.imageUrl" class="bm-img-thumb" alt="preview">
+      </div>
+
+      <div class="bm-row">
+        <div class="bm-field">
+          <label class="bm-label">Texto CTA *</label>
+          <input class="bm-input" [(ngModel)]="form.ctaText" placeholder="Ej: Ver ofertas">
+        </div>
+        <div class="bm-field">
+          <label class="bm-label">Enlace CTA *</label>
+          <input class="bm-input" [(ngModel)]="form.ctaLink" placeholder="/products">
+        </div>
+      </div>
+
+      <div class="bm-row">
+        <div class="bm-field">
+          <label class="bm-label">Color de fondo</label>
+          <div class="bm-color-row">
+            <input type="color" class="bm-color" [(ngModel)]="form.bgColor">
+            <input class="bm-input bm-input--sm" [(ngModel)]="form.bgColor" placeholder="#7c3aed">
+          </div>
+        </div>
+        <div class="bm-field">
+          <label class="bm-label">Color de texto</label>
+          <div class="bm-color-row">
+            <input type="color" class="bm-color" [(ngModel)]="form.textColor">
+            <input class="bm-input bm-input--sm" [(ngModel)]="form.textColor" placeholder="#ffffff">
+          </div>
+        </div>
+      </div>
+
+      <div class="bm-row">
+        <div class="bm-field">
+          <label class="bm-label">Posición</label>
+          <input type="number" class="bm-input" [(ngModel)]="form.position" min="1">
+        </div>
+        <div class="bm-field bm-field--check">
+          <label class="bm-label">Estado</label>
+          <label class="bm-toggle">
+            <input type="checkbox" [(ngModel)]="form.isActive">
+            <span class="bm-toggle__track"></span>
+            <span class="bm-toggle__label">{{ form.isActive ? 'Activo' : 'Inactivo' }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="bm-row">
+        <div class="bm-field">
+          <label class="bm-label">Válido desde</label>
+          <input type="date" class="bm-input" [(ngModel)]="form.validFrom">
+        </div>
+        <div class="bm-field">
+          <label class="bm-label">Válido hasta</label>
+          <input type="date" class="bm-input" [(ngModel)]="form.validTo">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="banner-modal__footer">
+    <button class="btn-ghost" (click)="closeModal()">Cancelar</button>
+    <button class="btn-primary" [disabled]="!isFormValid" (click)="saveBanner()">
+      {{ isEdit ? 'Guardar cambios' : 'Crear banner' }}
+    </button>
+  </div>
+</div>
+
+<!-- ── Delete confirm ───────────────────────────────────────────── -->
+<div class="modal-backdrop" *ngIf="showDeleteConfirm" (click)="cancelDelete()"></div>
+<div class="confirm-modal" *ngIf="showDeleteConfirm">
+  <div class="confirm-modal__icon">🗑️</div>
+  <h3>¿Eliminar banner?</h3>
+  <p>Se eliminará "<strong>{{ deletingBanner?.title }}</strong>" permanentemente.</p>
+  <div class="confirm-modal__actions">
+    <button class="btn-ghost" (click)="cancelDelete()">Cancelar</button>
+    <button class="btn-danger" (click)="doDelete()">Sí, eliminar</button>
+  </div>
+</div>

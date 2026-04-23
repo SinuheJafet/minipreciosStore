@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
 import { AdminOrder } from '../../../models/admin.model';
+import { OrdersAdminService } from '../services/orders-admin.service';
 
 type OrderStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -24,7 +25,8 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   styleUrls: ['./orders-section.component.scss']
 })
 export class OrdersSectionComponent implements OnInit {
-  @Input() orders!: Observable<AdminOrder[]>;
+  orders!: Observable<AdminOrder[]>;
+  constructor(private svc: OrdersAdminService) {}
 
   private statusFilter$ = new BehaviorSubject<OrderStatus>('all');
   filtered$!: Observable<AdminOrder[]>;
@@ -72,6 +74,7 @@ export class OrdersSectionComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.orders = this.svc.getOrders();
     this.orders.subscribe(o => this.allOrders = o);
     this.filtered$ = combineLatest([this.orders, this.statusFilter$]).pipe(
       map(([orders, status]) => status === 'all' ? orders : orders.filter(o => o.status === status))
@@ -87,6 +90,12 @@ export class OrdersSectionComponent implements OnInit {
   openDetail(order: AdminOrder): void {
     this.selectedOrder = { ...order };
     this.trackingInput = order.trackingNumber ?? '';
+    this.svc.getById(order.id).subscribe(full => {
+      if (full) {
+        this.selectedOrder = full;
+        this.trackingInput = full.trackingNumber ?? '';
+      }
+    });
   }
 
   closeDetail(): void { this.selectedOrder = null; }
@@ -97,12 +106,9 @@ export class OrdersSectionComponent implements OnInit {
 
   updateStatus(newStatus: string): void {
     if (!this.selectedOrder) return;
-    // In production: call OrdersAdminService.updateOrder(id, { status, trackingNumber })
-    const idx = this.allOrders.findIndex(o => o.id === this.selectedOrder!.id);
-    if (idx !== -1) {
-      this.allOrders[idx] = { ...this.allOrders[idx], status: newStatus as any, trackingNumber: this.trackingInput || undefined };
-      this.selectedOrder = { ...this.allOrders[idx] };
-    }
+    this.svc.updateStatus(this.selectedOrder.id, newStatus as AdminOrder['status'], this.trackingInput || undefined);
+    this.selectedOrder = { ...this.selectedOrder, status: newStatus as AdminOrder['status'],
+      trackingNumber: this.trackingInput || undefined };
   }
 
   itemTotal(order: AdminOrder): number {

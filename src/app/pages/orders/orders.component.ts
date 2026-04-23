@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { Order } from '../../models/order.model';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
+import { OrdersAdminService } from '../admin/services/orders-admin.service';
+import { AdminOrder } from '../../models/admin.model';
 
 @Component({
   selector: 'app-orders',
@@ -9,20 +10,31 @@ import { Router } from '@angular/router';
   styleUrls: ['./orders.component.scss']
 })
 export class OrdersComponent implements OnInit {
-  orders: Order[] = [];
+  orders: AdminOrder[] = [];
   loading = true;
-  error = '';
 
-  constructor(private authService: AuthService, private router: Router) {}
+  readonly statusLabel: Record<string, string> = {
+    pending:    'Pendiente',
+    processing: 'En proceso',
+    shipped:    'Enviado',
+    delivered:  'Entregado',
+    cancelled:  'Cancelado',
+  };
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private ordersService: OrdersAdminService,
+  ) {}
 
   ngOnInit(): void {
     if (!this.authService.isLoggedIn) {
       this.router.navigate(['/auth']);
       return;
     }
-    // Aquí deberías llamar a un servicio real que consuma /api/orders/my
-    // Por ahora, se deja como mock hasta conectar con backend
-    // this.ordersService.getMyOrders().subscribe(...)
-    this.loading = false;
+    this.ordersService.getMyOrders().subscribe(list => {
+      this.orders = list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      this.loading = false;
+    });
   }
 }

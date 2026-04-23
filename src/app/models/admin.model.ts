@@ -64,6 +64,36 @@ export interface SaleCartItem {
   qty: number;
 }
 
+export interface StoreCustomer {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  country?: string;
+  registeredAt: string;
+  lastOrderAt?: string;
+  totalOrders: number;
+  totalSpent: number;
+  isActive: boolean;
+}
+
+export interface AdminBanner {
+  id: number;
+  type: 'hero' | 'promo' | 'popup';
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  ctaText: string;
+  ctaLink: string;
+  bgColor: string;
+  textColor: string;
+  isActive: boolean;
+  position: number;
+  validFrom?: string;
+  validTo?: string;
+}
+
 export const MOVEMENT_CONCEPTS = {
   entrada: ['Compra a proveedor', 'Devolución de cliente', 'Ajuste de inventario', 'Transferencia entre almacenes', 'Otro'],
   salida:  ['Venta', 'Merma / daño', 'Muestra gratuita', 'Ajuste de inventario', 'Transferencia entre almacenes', 'Otro'],

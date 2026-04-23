@@ -1,9 +1,10 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from '../../../models/product.model';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
 import { MOVEMENT_CONCEPTS } from '../../../models/admin.model';
+import { InventoryAdminService } from '../services/inventory-admin.service';
 
 type StockFilter = 'all' | 'low' | 'out';
 
@@ -13,8 +14,8 @@ type StockFilter = 'all' | 'low' | 'out';
   styleUrls: ['./inventory-section.component.scss']
 })
 export class InventorySectionComponent implements OnInit {
-  @Input() products!: Observable<Product[]>;
-  @Input() allProducts!: Observable<Product[]>;
+  products!: Observable<Product[]>;
+  constructor(private svc: InventoryAdminService) {}
 
   stockFilter$ = new BehaviorSubject<StockFilter>('all');
   filtered$!: Observable<Product[]>;
@@ -54,6 +55,7 @@ export class InventorySectionComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.products = this.svc.getInventory();
     this.products.subscribe(p => this.allList = p);
     this.filtered$ = combineLatest([this.products, this.stockFilter$]).pipe(
       map(([prods, f]) => {
@@ -62,7 +64,6 @@ export class InventorySectionComponent implements OnInit {
         return prods;
       })
     );
-    if (this.allProducts) this.allProducts.subscribe(p => this.allList = p);
   }
 
   setFilter(f: StockFilter): void { this.activeFilter = f; this.stockFilter$.next(f); }
@@ -78,7 +79,18 @@ export class InventorySectionComponent implements OnInit {
 
   saveMovement(): void {
     if (!this.movProductId || !this.movConcept) return;
-    // In production: call InventoryAdminService.addMovement(...)
+    const product = this.allList.find(p => p.id === this.movProductId);
+    if (!product) return;
+    const prev = product.stock;
+    const newStock = this.movType === 'entrada' ? prev + this.movQty
+                   : this.movType === 'salida'  ? Math.max(0, prev - this.movQty)
+                   : this.movQty;
+    this.svc.addMovement({
+      productId: product.id, productName: product.name, productSku: product.sku,
+      type: this.movType, concept: this.movConcept, quantity: this.movQty,
+      notes: this.movNotes, previousStock: prev, newStock,
+      createdBy: 'Admin', createdAt: new Date().toISOString(),
+    });
     this.closeModal();
   }
 }

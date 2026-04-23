@@ -1,13 +1,16 @@
 <!-- Hero Banner -->
 <section class="hero">
   <div class="hero__slides">
-    <div class="hero__slide" *ngFor="let b of banners; let i = index" [class.active]="i === activeBanner" [class]="b.bg">
-      <div class="hero__content">
-        <h1>{{ b.title }}</h1>
-        <p>{{ b.subtitle }}</p>
-        <a [routerLink]="b.link" [queryParams]="{filter: b.filter}" class="hero__cta">{{ b.cta }}</a>
+    <div class="hero__slide" *ngFor="let b of banners; let i = index"
+         [class.active]="i === activeBanner"
+         [class]="b.bg"
+         [style.background-color]="!b.bg && b.bgColor ? b.bgColor : null">
+      <div class="hero__content" [style.color]="b.textColor || null">
+        <h1 [style.color]="b.textColor || null">{{ b.title }}</h1>
+        <p [style.color]="b.textColor ? b.textColor + 'cc' : null">{{ b.subtitle }}</p>
+        <a [routerLink]="b.link" [queryParams]="b.filter ? {filter: b.filter} : {}" class="hero__cta">{{ b.cta }}</a>
       </div>
-      <div class="hero__img">
+      <div class="hero__img" *ngIf="b.img">
         <img [src]="b.img" [alt]="b.title">
       </div>
     </div>
@@ -85,16 +88,25 @@
 </section>
 
 <!-- Promo Banner -->
-<section class="promo-banner">
+<section class="promo-banner"
+         [style.background]="promoBannerBg">
   <div class="promo-banner__container">
     <div class="promo-banner__content">
-      <span class="promo-tag">Tiempo limitado</span>
-      <h2>Hasta <strong>40% de descuento</strong> en cuidado de piel</h2>
-      <p>CeraVe, La Roche-Posay, Nivea y más marcas con precios increíbles</p>
-      <a routerLink="/products" [queryParams]="{category:'skincare'}" class="btn-white">Ver ofertas de skincare</a>
+      <span class="promo-tag" *ngIf="promoBanner?.subtitle || !promoBanner">
+        {{ promoBanner?.subtitle || 'Tiempo limitado' }}
+      </span>
+      <h2 [style.color]="promoBanner?.textColor || null" *ngIf="promoBanner">{{ promoBanner.title }}</h2>
+      <h2 *ngIf="!promoBanner">Hasta <strong>40% de descuento</strong> en cuidado de piel</h2>
+      <a [routerLink]="promoBanner?.ctaLink || '/products'"
+         [queryParams]="!promoBanner ? {category:'skincare'} : {}"
+         class="btn-white"
+         [style.color]="promoBanner?.bgColor || null">
+        {{ promoBanner?.ctaText || 'Ver ofertas de skincare' }}
+      </a>
     </div>
     <div class="promo-banner__img">
-      <img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&q=80" alt="Skincare ofertas">
+      <img [src]="promoBanner?.imageUrl || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&q=80'"
+           [alt]="promoBanner?.title || 'Skincare ofertas'">
     </div>
   </div>
 </section>

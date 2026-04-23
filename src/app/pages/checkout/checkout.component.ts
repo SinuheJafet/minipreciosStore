@@ -3,6 +3,8 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CartService } from '../../services/cart.service';
 import { Cart } from '../../models/cart.model';
+import { AuthService } from '../../services/auth.service';
+import { OrdersAdminService } from '../admin/services/orders-admin.service';
 
 @Component({
   selector: 'app-checkout',
@@ -22,7 +24,9 @@ export class CheckoutComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private cartService: CartService,
-    private router: Router
+    private router: Router,
+    private ordersService: OrdersAdminService,
+    private authService: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -63,9 +67,29 @@ export class CheckoutComponent implements OnInit {
 
   placeOrder(): void {
     if (this.paymentMethod === 'card' && this.paymentForm.invalid) return;
-    this.orderId = 'MP-' + Date.now().toString(36).toUpperCase();
-    this.orderPlaced = true;
-    this.cartService.clearCart();
+    const s = this.shippingForm.value;
+    const dto = {
+      items: this.cart.items.map(i => ({ productId: i.product.id, quantity: i.quantity })),
+      shipping: {
+        fullName: s.fullName, email: this.authService.currentUser?.email || s.email,
+        phone: s.phone, address: s.address, city: s.city,
+        state: s.state, zipCode: s.zipCode, country: s.country,
+      },
+      paymentMethod: this.paymentMethod,
+      couponCode: this.cart.couponCode,
+    };
+    this.ordersService.placeOrder(dto).subscribe({
+      next: (res) => {
+        this.orderId = res?.id?.toString() ?? ('MP-' + Date.now().toString(36).toUpperCase());
+        this.orderPlaced = true;
+        this.cartService.clearCart();
+      },
+      error: () => {
+        this.orderId = 'MP-' + Date.now().toString(36).toUpperCase();
+        this.orderPlaced = true;
+        this.cartService.clearCart();
+      },
+    });
   }
 
   formatCardNumber(event: Event): void {
