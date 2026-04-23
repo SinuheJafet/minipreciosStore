@@ -5,7 +5,10 @@
     <h1>¡Pedido confirmado!</h1>
     <p>Tu pedido <strong>#{{ orderId }}</strong> ha sido recibido correctamente.</p>
     <p class="hint">Recibirás un email de confirmación en breve.</p>
-    <a routerLink="/" class="btn-home">Volver al inicio</a>
+    <div class="success-actions">
+      <a routerLink="/orders" class="btn-orders">Ver mis pedidos</a>
+      <a routerLink="/" class="btn-home">Seguir comprando</a>
+    </div>
   </div>
 </div>
 
@@ -148,6 +151,7 @@
             <button class="btn-back" (click)="prevStep()">← Volver</button>
             <button class="btn-order" (click)="placeOrder()">✅ Confirmar pedido</button>
           </div>
+          <p class="order-error" *ngIf="orderError">⚠️ {{ orderError }}</p>
         </div>
       </div>
 

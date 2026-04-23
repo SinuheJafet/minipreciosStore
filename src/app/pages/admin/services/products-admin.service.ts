@@ -1,18 +1,36 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, Observable, catchError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from 'src/app/models/product.model';
 import { environment } from '../../../../environments/environment';
+import { RealtimeService } from '../../../services/realtime.service';
 
 interface PagedResponse<T> { data: T[]; total: number; page: number; pageSize: number; }
 
 @Injectable({ providedIn: 'root' })
-export class ProductsAdminService {
+export class ProductsAdminService implements OnDestroy {
   private _data = new BehaviorSubject<Product[]>([]);
   private api = `${environment.apiUrl}/products`;
+  private _subs = new Subscription();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private rt: RealtimeService) {
+    this._subs.add(
+      this.rt.on<Product>('ProductCreated').subscribe(p => {
+        this._data.next([...this._data.value, p]);
+      })
+    );
+    this._subs.add(
+      this.rt.on<Product>('ProductUpdated').subscribe(p => {
+        this._data.next(this._data.value.map(x => x.id === p.id ? p : x));
+      })
+    );
+    this._subs.add(
+      this.rt.on<{ id: number }>('ProductDeleted').subscribe(({ id }) => {
+        this._data.next(this._data.value.filter(x => x.id !== id));
+      })
+    );
+  }
 
   getProducts(): Observable<Product[]> {
     this.load();
@@ -28,17 +46,22 @@ export class ProductsAdminService {
   }
 
   add(product: Omit<Product, 'id'>): void {
+    // Hub will push ProductCreated → no manual reload needed
     this.http.post<Product>(this.api, product).pipe(catchError(() => of(null)))
-      .subscribe(() => this.load());
+      .subscribe(created => { if (!created) this.load(); });
   }
 
   update(id: number, patch: Partial<Product>): void {
+    // Hub will push ProductUpdated → no manual reload needed
     this.http.put<Product>(`${this.api}/${id}`, patch).pipe(catchError(() => of(null)))
-      .subscribe(() => this.load());
+      .subscribe(updated => { if (!updated) this.load(); });
   }
 
   remove(id: number): void {
+    // Hub will push ProductDeleted → no manual reload needed
     this.http.delete(`${this.api}/${id}`).pipe(catchError(() => of(null)))
-      .subscribe(() => this.load());
+      .subscribe(res => { if (res === null) this.load(); });
   }
+
+  ngOnDestroy(): void { this._subs.unsubscribe(); }
 }

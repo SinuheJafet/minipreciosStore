@@ -1,9 +1,12 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, catchError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AdminOrder } from '../../../models/admin.model';
 import { environment } from '../../../../environments/environment';
+import { RealtimeService } from '../../../services/realtime.service';
+
+interface OrderStatusEvent { id: string; status: string; trackingNumber?: string; }
 
 interface BackendOrderItem { productName: string; productSku: string; price: number; quantity: number; }
 interface BackendOrder {
@@ -34,11 +37,31 @@ function mapOrder(o: BackendOrder): AdminOrder {
 }
 
 @Injectable({ providedIn: 'root' })
-export class OrdersAdminService {
+export class OrdersAdminService implements OnDestroy {
   private _data = new BehaviorSubject<AdminOrder[]>([]);
   private api = `${environment.apiUrl}/orders`;
+  private _subs = new Subscription();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private rt: RealtimeService) {
+    // New order placed from the store → prepend to admin list
+    this._subs.add(
+      this.rt.on<BackendOrder>('OrderCreated').subscribe(o => {
+        this._data.next([mapOrder(o), ...this._data.value]);
+      })
+    );
+    // Order status changed from admin panel → patch in-place
+    this._subs.add(
+      this.rt.on<OrderStatusEvent>('OrderStatusChanged').subscribe(evt => {
+        this._data.next(
+          this._data.value.map(o =>
+            o.id === evt.id
+              ? { ...o, status: evt.status as AdminOrder['status'], trackingNumber: evt.trackingNumber ?? o.trackingNumber }
+              : o
+          )
+        );
+      })
+    );
+  }
 
   getOrders(): Observable<AdminOrder[]> {
     this.load();
@@ -79,19 +102,20 @@ export class OrdersAdminService {
   /** Usado por checkout — POST /api/orders */
   placeOrder(dto: {
     items: { productId: number; quantity: number }[];
-    shipping: { fullName: string; email: string; phone: string; address: string; city: string; state: string; zipCode: string; country: string };
+    shipping: { fullName: string; email: string; phone: string; address: string; city: string; state: string; zip: string; country: string };
     paymentMethod: string;
     couponCode?: string;
-  }): Observable<{ id: string }> {
-    return this.http.post<BackendOrder>(this.api, dto).pipe(
-      catchError(() => of(null as any))
-    );
+  }): Observable<BackendOrder> {
+    return this.http.post<BackendOrder>(this.api, dto);
   }
 
   updateStatus(id: string, status: AdminOrder['status'], trackingNumber?: string): void {
+    // Hub will push OrderStatusChanged → no manual reload needed
     this.http.patch(`${this.api}/${id}/status`, { status, trackingNumber }).pipe(catchError(() => of(null)))
-      .subscribe(() => this.load());
+      .subscribe(res => { if (res === null) this.load(); });
   }
+
+  ngOnDestroy(): void { this._subs.unsubscribe(); }
 
   private load(): void {
     this.http.get<PagedOrderResponse | BackendOrder[]>(this.api).pipe(

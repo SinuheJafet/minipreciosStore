@@ -1,10 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, catchError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from 'src/app/models/product.model';
 import { InventoryMovement } from '../../../models/admin.model';
 import { environment } from '../../../../environments/environment';
+import { RealtimeService } from '../../../services/realtime.service';
 
 interface InvProductDto {
   id: number; name: string; brand: string; sku: string;
@@ -23,12 +24,22 @@ function mapToProduct(p: InvProductDto): Product {
 }
 
 @Injectable({ providedIn: 'root' })
-export class InventoryAdminService {
+export class InventoryAdminService implements OnDestroy {
   private _inventory  = new BehaviorSubject<Product[]>([]);
   private _movements  = new BehaviorSubject<InventoryMovement[]>([]);
   private api = `${environment.apiUrl}/inventory`;
+  private _subs = new Subscription();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private rt: RealtimeService) {
+    // Patch stock in-place when the hub signals a change
+    this._subs.add(
+      this.rt.on<{ productId: number; stock: number }>('InventoryChanged').subscribe(({ productId, stock }) => {
+        this._inventory.next(
+          this._inventory.value.map(p => p.id === productId ? { ...p, stock } : p)
+        );
+      })
+    );
+  }
 
   getInventory(): Observable<Product[]> {
     this.loadInventory();
@@ -54,7 +65,10 @@ export class InventoryAdminService {
       notes:     movement.notes,
     };
     this.http.post(`${this.api}/movements`, body).pipe(catchError(() => of(null)))
-      .subscribe(() => { this.loadInventory(); this.loadMovements(); });
+      .subscribe(() => {
+        // Hub will push InventoryChanged; reload movements list manually
+        this.loadMovements();
+      });
   }
 
   private loadInventory(): void {
@@ -68,4 +82,6 @@ export class InventoryAdminService {
     this.http.get<InventoryMovement[]>(`${this.api}/movements`).pipe(catchError(() => of([] as InventoryMovement[])))
       .subscribe(list => this._movements.next(list));
   }
+
+  ngOnDestroy(): void { this._subs.unsubscribe(); }
 }

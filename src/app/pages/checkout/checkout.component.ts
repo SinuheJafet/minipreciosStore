@@ -5,6 +5,7 @@ import { CartService } from '../../services/cart.service';
 import { Cart } from '../../models/cart.model';
 import { AuthService } from '../../services/auth.service';
 import { OrdersAdminService } from '../admin/services/orders-admin.service';
+import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-checkout',
@@ -15,6 +16,7 @@ export class CheckoutComponent implements OnInit {
   cart!: Cart;
   step = 1;
   orderPlaced = false;
+  orderError = '';
   orderId = '';
   paymentMethod = 'card';
 
@@ -27,6 +29,7 @@ export class CheckoutComponent implements OnInit {
     private router: Router,
     private ordersService: OrdersAdminService,
     private authService: AuthService,
+    private rt: RealtimeService,
   ) {}
 
   ngOnInit(): void {
@@ -73,21 +76,30 @@ export class CheckoutComponent implements OnInit {
       shipping: {
         fullName: s.fullName, email: this.authService.currentUser?.email || s.email,
         phone: s.phone, address: s.address, city: s.city,
-        state: s.state, zipCode: s.zipCode, country: s.country,
+        state: s.state, zip: s.zipCode, country: s.country,
       },
       paymentMethod: this.paymentMethod,
       couponCode: this.cart.couponCode,
     };
+    this.orderError = '';
     this.ordersService.placeOrder(dto).subscribe({
       next: (res) => {
-        this.orderId = res?.id?.toString() ?? ('MP-' + Date.now().toString(36).toUpperCase());
+        this.orderId = res?.id?.toString() ?? '';
         this.orderPlaced = true;
         this.cartService.clearCart();
+        if (this.orderId) {
+          this.rt.invoke('SubscribeToOrder', this.orderId);
+        }
       },
-      error: () => {
-        this.orderId = 'MP-' + Date.now().toString(36).toUpperCase();
-        this.orderPlaced = true;
-        this.cartService.clearCart();
+      error: (err) => {
+        const status = err?.status;
+        if (status === 401) {
+          this.orderError = 'Debes iniciar sesión para realizar un pedido.';
+        } else if (status === 400) {
+          this.orderError = err?.error?.message ?? 'Datos del pedido incorrectos. Revisa el carrito.';
+        } else {
+          this.orderError = 'No se pudo procesar el pedido. Inténtalo de nuevo.';
+        }
       },
     });
   }
