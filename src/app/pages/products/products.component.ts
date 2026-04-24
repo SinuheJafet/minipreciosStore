@@ -1,13 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ProductService } from '../../services/product.service';
 import { Product } from '../../models/product.model';
+import { Subscription, skip } from 'rxjs';
 @Component({
   selector: 'app-products',
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss']
 })
-export class ProductsComponent implements OnInit {
+export class ProductsComponent implements OnInit, OnDestroy {
   allProducts: Product[] = [];
   filteredProducts: Product[] = [];
   selectedCategory = '';
@@ -17,6 +18,7 @@ export class ProductsComponent implements OnInit {
   priceRange = { min: 0, max: 150 };
   currentMax = 150;
   loading = true;
+  private subs = new Subscription();
 
   categories = [
     { slug: '', label: 'Todos' },
@@ -44,16 +46,37 @@ export class ProductsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.productService.getProducts().subscribe(products => {
-      this.allProducts = products;
-      this.loading = false;
+    this.subs.add(
       this.route.queryParams.subscribe(params => {
         this.selectedCategory = params['category'] || '';
         this.searchQuery = params['q'] || '';
         this.activeFilter = params['filter'] || '';
         this.applyFilters();
-      });
-    });
+      })
+    );
+
+    this.subs.add(
+      this.productService.getProducts().subscribe(products => {
+        this.allProducts = products;
+        this.loading = false;
+        this.applyFilters();
+
+        this.subs.add(
+          this.productService.products$.pipe(skip(1)).subscribe(liveProducts => {
+            this.allProducts = liveProducts;
+            this.applyFilters();
+          })
+        );
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
+  }
+
+  trackByProductId(_: number, p: Product): number {
+    return p.id;
   }
 
   applyFilters(): void {

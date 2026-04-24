@@ -20,6 +20,7 @@ import { WishlistComponent } from './pages/wishlist/wishlist.component';
 import { AuthComponent } from './pages/auth/auth.component';
 import { AdminModule } from './pages/admin/admin.module';
 import { OrdersComponent } from './pages/orders/orders.component';
+import { ProfileComponent } from './pages/profile/profile.component';
 import { DynamicTableModule } from './shared/components/dynamic-table/dynamic-table.module';
 
 @NgModule({
@@ -37,6 +38,7 @@ import { DynamicTableModule } from './shared/components/dynamic-table/dynamic-ta
     WishlistComponent,
     AuthComponent,
     OrdersComponent,
+    ProfileComponent,
   ],
   imports: [
     BrowserModule,

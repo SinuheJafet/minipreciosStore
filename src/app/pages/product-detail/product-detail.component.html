@@ -53,9 +53,9 @@
       </div>
 
       <div class="price-section">
-        <span class="price">{{ product.price | currency:'EUR':'symbol':'1.2-2' }}</span>
+        <span class="price">{{ product.price | currency:'MXN':'$':'1.2-2' }}</span>
         <div class="price-original" *ngIf="product.originalPrice">
-          <span>{{ product.originalPrice | currency:'EUR':'symbol':'1.2-2' }}</span>
+          <span>{{ product.originalPrice | currency:'MXN':'$':'1.2-2' }}</span>
           <span class="discount-badge">-{{ discountPercent }}%</span>
         </div>
       </div>
@@ -138,7 +138,7 @@
   <div class="related" *ngIf="relatedProducts.length > 0">
     <h2>Productos relacionados</h2>
     <div class="related__grid">
-      <app-product-card *ngFor="let p of relatedProducts" [product]="p"></app-product-card>
+      <app-product-card *ngFor="let p of relatedProducts; trackBy: trackByProductId" [product]="p"></app-product-card>
     </div>
   </div>
 </div>

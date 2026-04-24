@@ -1,0 +1,68 @@
+<div class="section-card">
+  <div class="section-card__header">
+    <h2>Cuentas bancarias</h2>
+  </div>
+
+  <div class="section-card__body">
+    <form [formGroup]="form" (ngSubmit)="save()" class="accounts-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Alias</label>
+          <input type="text" formControlName="alias" placeholder="Cuenta principal">
+        </div>
+        <div class="form-group">
+          <label>Banco</label>
+          <input type="text" formControlName="bank" placeholder="BBVA">
+        </div>
+        <div class="form-group">
+          <label>Titular</label>
+          <input type="text" formControlName="accountName" placeholder="Razón social">
+        </div>
+        <div class="form-group">
+          <label>CLABE (18 dígitos)</label>
+          <input type="text" formControlName="clabe" maxlength="18" placeholder="012345678901234567">
+        </div>
+        <div class="form-group">
+          <label>Número de cuenta (opcional)</label>
+          <input type="text" formControlName="accountNumber" placeholder="1234567890">
+        </div>
+        <div class="form-group full">
+          <label>Instrucciones (opcional)</label>
+          <input type="text" formControlName="instructions" placeholder="Concepto: Pedido #{numeroPedido}">
+        </div>
+      </div>
+
+      <div class="toggles">
+        <label><input type="checkbox" formControlName="isDefault"> Predeterminada</label>
+        <label><input type="checkbox" formControlName="isActive"> Activa</label>
+      </div>
+
+      <p class="msg ok" *ngIf="success">{{ success }}</p>
+      <p class="msg error" *ngIf="error">{{ error }}</p>
+
+      <div class="actions">
+        <button type="button" class="btn-secondary" (click)="resetForm()">Limpiar</button>
+        <button type="submit" class="btn-primary" [disabled]="form.invalid || saving">
+          {{ saving ? 'Guardando...' : (editingId ? 'Actualizar' : 'Crear cuenta') }}
+        </button>
+      </div>
+    </form>
+
+    <div class="accounts-list" *ngIf="!loading">
+      <div class="account-item" *ngFor="let a of accounts">
+        <div>
+          <p class="name">{{ a.alias }} <span class="chip" *ngIf="a.isDefault">Predeterminada</span></p>
+          <p class="meta">{{ a.bank }} · {{ a.accountName }}</p>
+          <p class="meta">CLABE: {{ a.clabe }}</p>
+          <p class="meta" *ngIf="a.accountNumber">Cuenta: {{ a.accountNumber }}</p>
+          <p class="meta" *ngIf="a.instructions">{{ a.instructions }}</p>
+        </div>
+        <div class="item-actions">
+          <button class="btn-link" (click)="edit(a)">Editar</button>
+          <button class="btn-link" (click)="makeDefault(a)" *ngIf="!a.isDefault">Hacer predeterminada</button>
+          <button class="btn-link danger" (click)="delete(a)">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

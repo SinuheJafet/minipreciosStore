@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of, switchMap } from 'rxjs';
 import { jsPDF } from 'jspdf';
 import { Product } from '../../../models/product.model';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
 import { ProductsAdminService } from '../services/products-admin.service';
+import { ProductService } from '../../../services/product.service';
 
 interface CompetitorPriceForm {
   platform: string;
@@ -35,9 +36,15 @@ const EMPTY_FORM = (): ProductForm => ({
 export class ProductsSectionComponent implements OnInit {
   products!: Observable<Product[]>;
 
-  constructor(private svc: ProductsAdminService) {}
+  constructor(
+    private svc: ProductsAdminService,
+    private productService: ProductService
+  ) {}
 
-  ngOnInit(): void { this.products = this.svc.getProducts(); }
+  ngOnInit(): void {
+    this.products = this.svc.getProducts();
+    this.loadCategories();
+  }
 
   showModal       = false;
   isEdit          = false;
@@ -49,10 +56,11 @@ export class ProductsSectionComponent implements OnInit {
   sharingProduct: Product | null = null;
   shareCopied     = false;
   isGenerating    = false;
+  discountPercentInput: number | null = null;
 
   selectedProducts: Product[] = [];
 
-  readonly categories = [];
+  categories: string[] = [];
   readonly badges = [
     { value: '', label: '— Sin badge —' },
     { value: 'new',        label: 'New'        },
@@ -87,7 +95,12 @@ export class ProductsSectionComponent implements OnInit {
   ];
 
   /* ── CRUD ── */
-  openCreate(): void { this.form = EMPTY_FORM(); this.isEdit = false; this.showModal = true; }
+  openCreate(): void {
+    this.form = EMPTY_FORM();
+    this.discountPercentInput = null;
+    this.isEdit = false;
+    this.showModal = true;
+  }
 
   openEdit(p: Product): void {
     this.form = {
@@ -100,14 +113,23 @@ export class ProductsSectionComponent implements OnInit {
         platform: cp.platform, price: cp.price, url: cp.url ?? '',
       })),
     };
+    this.syncDiscountFromPrices();
     this.isEdit = true;
     this.showModal = true;
   }
 
-  closeModal(): void { this.showModal = false; }
+  closeModal(): void {
+    this.showModal = false;
+    this.discountPercentInput = null;
+  }
 
   saveProduct(): void {
-    if (!this.form.name || !this.form.sku || !this.form.price) return;
+    if (!this.form.name || !this.form.sku || !this.form.category || !this.form.price) return;
+
+    const competitorPrices = this.form.competitorPrices
+      .filter(cp => cp.platform && cp.price !== null)
+      .map(cp => ({ platform: cp.platform.trim(), price: cp.price!, url: cp.url?.trim() || undefined }));
+
     const payload: Omit<Product, 'id'> = {
       name: this.form.name, brand: this.form.brand, category: this.form.category,
       description: this.form.description, sku: this.form.sku, price: this.form.price,
@@ -118,14 +140,18 @@ export class ProductsSectionComponent implements OnInit {
       tags: this.form.tags.split(',').map(t => t.trim()).filter(Boolean),
       images: this.form.imageUrl ? [this.form.imageUrl] : [],
       rating: 0, reviews: 0,
-      competitorPrices: this.form.competitorPrices
-        .filter(cp => cp.platform && cp.price !== null)
-        .map(cp => ({ platform: cp.platform, price: cp.price!, url: cp.url || undefined,
-                      updatedAt: new Date().toISOString().slice(0, 10) })),
     };
-    if (this.isEdit && this.form.id) this.svc.update(this.form.id, payload);
-    else this.svc.add(payload);
-    this.closeModal();
+
+    if (this.isEdit && this.form.id) {
+      this.svc.update(this.form.id, payload).pipe(
+        switchMap(updated => updated ? this.svc.replaceCompetitorPrices(this.form.id!, competitorPrices) : of(void 0))
+      ).subscribe(() => this.closeModal());
+      return;
+    }
+
+    this.svc.add(payload).pipe(
+      switchMap(created => created ? this.svc.replaceCompetitorPrices(created.id, competitorPrices) : of(void 0))
+    ).subscribe(() => this.closeModal());
   }
 
   confirmDelete(p: Product): void { this.deletingProduct = p; this.showDeleteConfirm = true; }
@@ -135,6 +161,22 @@ export class ProductsSectionComponent implements OnInit {
   /* ── Competitor prices (form) ── */
   addCompetitorPrice(): void    { this.form.competitorPrices.push({ platform: '', price: null, url: '' }); }
   removeCompetitorPrice(i: number): void { this.form.competitorPrices.splice(i, 1); }
+
+  onDiscountPercentChange(): void {
+    this.applyDiscountToCurrentPrice();
+  }
+
+  onOriginalPriceChange(): void {
+    if (this.discountPercentInput !== null && this.discountPercentInput > 0) {
+      this.applyDiscountToCurrentPrice();
+      return;
+    }
+    this.syncDiscountFromPrices();
+  }
+
+  syncDiscountFromPrices(): void {
+    this.discountPercentInput = this.getDiscountPercent(this.form.price, this.form.originalPrice);
+  }
 
   /* ── Selection ── */
   onChecked(rows: Product[]): void { this.selectedProducts = rows; }
@@ -151,6 +193,28 @@ export class ProductsSectionComponent implements OnInit {
   discountPct(p: Product): number {
     if (!p.originalPrice) return 0;
     return Math.round((1 - p.price / p.originalPrice) * 100);
+  }
+
+  private getDiscountPercent(price: number | null, originalPrice: number | null): number | null {
+    if (price === null || originalPrice === null || originalPrice <= 0 || originalPrice <= price) {
+      return null;
+    }
+    return Number(((1 - price / originalPrice) * 100).toFixed(2));
+  }
+
+  private applyDiscountToCurrentPrice(): void {
+    if (this.discountPercentInput === null) return;
+    if (this.form.originalPrice === null || this.form.originalPrice <= 0) return;
+    if (this.discountPercentInput < 0 || this.discountPercentInput >= 100) return;
+
+    const currentPrice = this.form.originalPrice * (1 - this.discountPercentInput / 100);
+    this.form.price = Number(currentPrice.toFixed(2));
+  }
+
+  private loadCategories(): void {
+    this.productService.getCategories().subscribe(categories => {
+      this.categories = categories.map(c => c.name);
+    });
   }
 
   /* ── Download PDF (single product) ── */

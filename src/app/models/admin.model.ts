@@ -7,13 +7,15 @@ export interface AdminOrder {
   discount: number;
   shipping: number;
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
   address: string;
   city: string;
   country: string;
   paymentMethod: string;
   trackingNumber?: string;
+  paymentProofUrl?: string;
+  paymentProofStatus?: string;
   timeline: { date: string; label: string; done: boolean; }[];
 }
 

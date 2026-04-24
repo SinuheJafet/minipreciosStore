@@ -5,14 +5,15 @@ import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-t
 import { AdminOrder } from '../../../models/admin.model';
 import { OrdersAdminService } from '../services/orders-admin.service';
 
-type OrderStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+type OrderStatus = 'all' | 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente', processing: 'Procesando', shipped: 'Enviado',
+  pending: 'Pendiente', paid: 'Pagado', processing: 'Procesando', shipped: 'Enviado',
   delivered: 'Entregado', cancelled: 'Cancelado',
 };
 const STATUS_TRANSITIONS: Record<string, string[]> = {
-  pending:    ['processing', 'cancelled'],
+  pending:    ['paid',       'cancelled'],
+  paid:       ['processing', 'cancelled'],
   processing: ['shipped',    'cancelled'],
   shipped:    ['delivered',  'cancelled'],
   delivered:  [],
@@ -39,6 +40,7 @@ export class OrdersSectionComponent implements OnInit {
   readonly statusLabels = STATUS_LABELS;
   readonly tabs: { key: OrderStatus; label: string }[] = [
     { key: 'all', label: 'Todos' }, { key: 'pending', label: 'Pendiente' },
+    { key: 'paid', label: 'Pagado' },
     { key: 'processing', label: 'Procesando' }, { key: 'shipped', label: 'Enviado' },
     { key: 'delivered', label: 'Entregado' }, { key: 'cancelled', label: 'Cancelado' },
   ];
@@ -57,11 +59,31 @@ export class OrdersSectionComponent implements OnInit {
     { columnDef: 'total', headerName: 'Total',
       isHtmlTemplate: true, contentTemplate: (r: AdminOrder) =>
         `<span style="font-weight:700;color:#0f172a">$${r.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>` },
-    { columnDef: 'paymentMethod', headerName: 'Pago', cell: (r: AdminOrder) => r.paymentMethod },
+    { columnDef: 'paymentMethod', headerName: 'Pago',
+      isHtmlTemplate: true, contentTemplate: (r: AdminOrder) => {
+        const paymentLabel = r.paymentMethod === 'bank_transfer' ? 'Transferencia' : r.paymentMethod;
+
+        if (!r.paymentProofStatus) {
+          return `<span style="font-size:12px;color:#334155">${paymentLabel}</span>`;
+        }
+
+        const cfg: Record<string, [string, string, string]> = {
+          pending_review: ['#fef3c7', '#92400e', 'Comprobante en revisión'],
+          approved: ['#dcfce7', '#166534', 'Comprobante aprobado'],
+          rejected: ['#fee2e2', '#b91c1c', 'Comprobante rechazado'],
+        };
+
+        const [bg, color, label] = cfg[r.paymentProofStatus] ?? ['#e2e8f0', '#334155', r.paymentProofStatus];
+        return `
+          <span style="display:block;font-size:12px;color:#334155">${paymentLabel}</span>
+          <span style="display:inline-block;margin-top:3px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:${bg};color:${color}">${label}</span>
+        `;
+      } },
     { columnDef: 'status', headerName: 'Estado',
       isHtmlTemplate: true, contentTemplate: (r: AdminOrder) => {
         const cfg: Record<string, [string, string]> = {
           pending: ['#fef3c7', '#d97706'], processing: ['#dbeafe', '#2563eb'],
+          paid: ['#dcfce7', '#166534'],
           shipped: ['#ede9fe', '#7c3aed'], delivered: ['#d1fae5', '#059669'],
           cancelled: ['#fef2f2', '#dc2626'],
         };
@@ -88,11 +110,21 @@ export class OrdersSectionComponent implements OnInit {
   }
 
   openDetail(order: AdminOrder): void {
-    this.selectedOrder = { ...order };
+    const cached = this.svc.getCachedPaymentProof(order.id);
+    this.selectedOrder = {
+      ...order,
+      paymentProofUrl: order.paymentProofUrl ?? cached?.url,
+      paymentProofStatus: order.paymentProofStatus ?? cached?.status,
+    };
     this.trackingInput = order.trackingNumber ?? '';
     this.svc.getById(order.id).subscribe(full => {
       if (full) {
-        this.selectedOrder = full;
+        const cachedLatest = this.svc.getCachedPaymentProof(full.id);
+        this.selectedOrder = {
+          ...full,
+          paymentProofUrl: full.paymentProofUrl ?? cachedLatest?.url,
+          paymentProofStatus: full.paymentProofStatus ?? cachedLatest?.status,
+        };
         this.trackingInput = full.trackingNumber ?? '';
       }
     });

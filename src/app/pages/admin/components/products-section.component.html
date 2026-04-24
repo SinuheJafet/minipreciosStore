@@ -68,16 +68,25 @@
           <label>Nuestro precio <span class="req">*</span></label>
           <div class="input-prefix">
             <span>$</span>
-            <input type="number" [(ngModel)]="form.price" min="0" placeholder="0.00">
+            <input type="number" [(ngModel)]="form.price" (ngModelChange)="syncDiscountFromPrices()" min="0" placeholder="0.00">
           </div>
         </div>
         <div class="field">
           <label>Precio original <small>(antes del descuento)</small></label>
           <div class="input-prefix">
             <span>$</span>
-            <input type="number" [(ngModel)]="form.originalPrice" min="0" placeholder="0.00">
+            <input type="number" [(ngModel)]="form.originalPrice" (ngModelChange)="onOriginalPriceChange()" min="0" placeholder="0.00">
           </div>
         </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Descuento (%)</label>
+          <input type="number" [(ngModel)]="discountPercentInput" (ngModelChange)="onDiscountPercentChange()" min="0" max="99.99" step="0.01" placeholder="Ej. 15">
+          <small>Se aplica sobre el precio original para calcular tu precio actual.</small>
+        </div>
+        <div class="field"></div>
       </div>
 
       <div class="form-row">
@@ -145,7 +154,7 @@
 
       <div class="modal__footer">
         <button class="btn-cancel" (click)="closeModal()">Cancelar</button>
-        <button class="btn-save" (click)="saveProduct()" [disabled]="!form.name || !form.sku || !form.price">
+        <button class="btn-save" (click)="saveProduct()" [disabled]="!form.name || !form.sku || !form.category || !form.price">
           {{ isEdit ? 'Guardar cambios' : 'Crear producto' }}
         </button>
       </div>

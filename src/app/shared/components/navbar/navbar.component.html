@@ -34,7 +34,7 @@
             <img [src]="p.images[0]" [alt]="p.name">
             <div>
               <span class="name">{{ p.name }}</span>
-              <span class="price">{{ p.price | currency:'EUR':'symbol':'1.0-0' }}</span>
+              <span class="price">{{ p.price | currency:'MXN':'$':'1.2-2' }}</span>
             </div>
           </div>
         </div>
@@ -75,6 +75,10 @@
             <span class="ud-name">{{ currentUser.name }}</span>
             <span class="ud-email">{{ currentUser.email }}</span>
           </div>
+          <a routerLink="/profile" class="ud-item" (click)="userDropdown = false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Mi perfil
+          </a>
           <a routerLink="/orders" class="ud-item" (click)="userDropdown = false">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
             Mis pedidos

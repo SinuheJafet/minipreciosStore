@@ -82,7 +82,7 @@
       <a routerLink="/products" class="see-all">Ver todos →</a>
     </div>
     <div class="products-grid">
-      <app-product-card *ngFor="let p of featuredProducts" [product]="p"></app-product-card>
+      <app-product-card *ngFor="let p of featuredProducts; trackBy: trackByProductId" [product]="p"></app-product-card>
     </div>
   </div>
 </section>
@@ -119,7 +119,7 @@
       <a routerLink="/products" [queryParams]="{filter:'sale'}" class="see-all">Ver todas →</a>
     </div>
     <div class="products-grid">
-      <app-product-card *ngFor="let p of saleProducts" [product]="p"></app-product-card>
+      <app-product-card *ngFor="let p of saleProducts; trackBy: trackByProductId" [product]="p"></app-product-card>
     </div>
   </div>
 </section>

@@ -20,6 +20,6 @@ export interface Order {
   shipping: number;
   discount: number;
   total: number;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'paid' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: Date;
 }

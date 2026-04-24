@@ -13,6 +13,7 @@ import { MovementsSectionComponent } from './components/movements-section.compon
 import { UsersSectionComponent } from './components/users-section.component';
 import { CustomersSectionComponent } from './components/customers-section.component';
 import { BannersSectionComponent } from './components/banners-section.component';
+import { PaymentAccountsSectionComponent } from './components/payment-accounts-section.component';
 import { DynamicTableModule } from '../../shared/components/dynamic-table/dynamic-table.module';
 
 @NgModule({
@@ -27,6 +28,7 @@ import { DynamicTableModule } from '../../shared/components/dynamic-table/dynami
     UsersSectionComponent,
     CustomersSectionComponent,
     BannersSectionComponent,
+    PaymentAccountsSectionComponent,
   ],
   imports: [
     CommonModule,

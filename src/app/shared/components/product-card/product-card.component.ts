@@ -12,6 +12,7 @@ import { WishlistService } from '../../../services/wishlist.service';
 export class ProductCardComponent {
   @Input() product!: Product;
   addedToCart = false;
+  quickViewOpen = false;
 
   constructor(
     private cartService: CartService,
@@ -35,12 +36,33 @@ export class ProductCardComponent {
     setTimeout(() => this.addedToCart = false, 2000);
   }
 
+  addToCartFromQV(e: Event): void {
+    e.stopPropagation();
+    this.cartService.addItem(this.product);
+    this.addedToCart = true;
+    setTimeout(() => this.addedToCart = false, 2000);
+  }
+
   toggleWishlist(e: Event): void {
     e.stopPropagation();
     this.wishlistService.toggle(this.product);
   }
 
+  openQuickView(e: Event): void {
+    e.stopPropagation();
+    this.quickViewOpen = true;
+    document.body.style.overflow = 'hidden';
+  }
+
+  closeQuickView(e: Event): void {
+    e.stopPropagation();
+    this.quickViewOpen = false;
+    document.body.style.overflow = '';
+  }
+
   goToDetail(): void {
+    this.quickViewOpen = false;
+    document.body.style.overflow = '';
     this.router.navigate(['/products', this.product.id]);
   }
 }

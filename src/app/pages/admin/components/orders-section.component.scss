@@ -25,6 +25,7 @@
 .status-pill {
   padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
   &--pending    { background: #fef3c7; color: #d97706; }
+  &--paid       { background: #dcfce7; color: #166534; }
   &--processing { background: #dbeafe; color: #2563eb; }
   &--shipped    { background: #ede9fe; color: #7c3aed; }
   &--delivered  { background: #d1fae5; color: #059669; }
@@ -62,6 +63,7 @@
 }
 .btn-status {
   padding: 8px 16px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.18s; white-space: nowrap;
+  &--paid       { background: #dcfce7; color: #166534; &:hover { background: #166534; color: white; } }
   &--processing { background: #dbeafe; color: #2563eb; &:hover { background: #2563eb; color: white; } }
   &--shipped    { background: #ede9fe; color: #7c3aed; &:hover { background: #7c3aed; color: white; } }
   &--delivered  { background: #d1fae5; color: #059669; &:hover { background: #059669; color: white; } }

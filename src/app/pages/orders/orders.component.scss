@@ -15,40 +15,344 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
       font-size: 15px;
       margin-bottom: 12px;
       .order-id { font-weight: 700; }
-      .order-status { text-transform: capitalize; font-weight: 600; }
-      .status-pending { color: #ff9800; }
-      .status-processing { color: #2196f3; }
-      .status-shipped { color: #673ab7; }
-      .status-delivered { color: #4caf50; }
-      .status-cancelled { color: #f44336; }
+      .order-date { color: #999; font-size: 13px; }
     }
-    .order-items {
+    .order-items-preview {
       display: flex;
       flex-wrap: wrap;
-      gap: 16px;
-      margin-bottom: 12px;
+      gap: 12px;
+      margin-bottom: 16px;
       .order-item {
         background: #f7f7f7;
         border-radius: 8px;
-        padding: 8px 16px;
+        padding: 8px 14px;
         font-size: 14px;
         display: flex;
-        gap: 12px;
+        gap: 10px;
         align-items: center;
+        &__img { width: 36px; height: 36px; object-fit: cover; border-radius: 6px; }
       }
+      .order-items-empty { font-size: 13px; color: #999; font-style: italic; }
     }
-    .order-total {
-      text-align: right;
-      font-size: 16px;
-      font-weight: 700;
-      margin-top: 8px;
+    .order-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      &__right { display: flex; align-items: center; gap: 16px; }
     }
+    .order-tracking { font-size: 13px; color: #555; }
+    .order-total { font-size: 16px; font-weight: 700; }
   }
 }
+
+.order-status {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  &.status-pending    { color: #ff9800; background: #fff3e0; }
+  &.status-paid       { color: #166534; background: #dcfce7; }
+  &.status-processing { color: #2196f3; background: #e3f2fd; }
+  &.status-shipped    { color: #673ab7; background: #ede7f6; }
+  &.status-delivered  { color: #4caf50; background: #e8f5e9; }
+  &.status-cancelled  { color: #f44336; background: #ffebee; }
+}
+
+.btn-detail {
+  padding: 8px 20px;
+  background: var(--primary, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  &:hover { background: var(--primary-dark, #4f46e5); }
+}
+
+.btn-proof {
+  padding: 8px 14px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #d1fae5;
+  }
+}
+
+/* ── Modal ──────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 24px 28px 16px;
+    border-bottom: 1px solid #eee;
+    h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #999;
+    padding: 4px 8px;
+    &:hover { color: #333; }
+  }
+
+  &__loading {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+    font-size: 15px;
+  }
+
+  &__body { padding: 20px 28px 28px; }
+}
+
+.modal-section {
+  margin-bottom: 24px;
+  h3 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin-bottom: 12px;
+  }
+}
+
+.detail-items { display: flex; flex-direction: column; gap: 10px; }
+.no-items { font-size: 13px; color: #bbb; font-style: italic; text-align: center; padding: 16px 0; }
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: #f8f8f8;
+  border-radius: 10px;
+
+  &__img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; }
+  &__info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  &__name { font-size: 15px; font-weight: 600; }
+  &__sku { font-size: 12px; color: #999; }
+  &__right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  &__qty { font-size: 13px; color: #777; }
+  &__price { font-size: 15px; font-weight: 700; }
+}
+
+.detail-totals { display: flex; flex-direction: column; gap: 8px; }
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #555;
+  .discount { color: #10b981; }
+  &.total-row { font-size: 17px; color: #111; padding-top: 8px; border-top: 1px solid #eee; }
+}
+
+.detail-address { font-size: 14px; color: #555; line-height: 1.6; }
+
+.transfer-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+
+  p {
+    margin: 0 0 6px;
+    font-size: 13px;
+    color: #475569;
+  }
+}
+
+.transfer-account {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
+.transfer-concept {
+  margin-top: 8px !important;
+  color: #b45309 !important;
+}
+
+.proof-upload {
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #475569;
+  }
+
+  input[type='file'] {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+}
+
+.proof-dropzone {
+  display: block;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 14px;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+
+  &:hover,
+  &.drag-active {
+    border-color: #0ea5e9;
+    background: #ecfeff;
+  }
+
+  &__title {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  &__hint {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  &__file {
+    display: inline-block;
+    margin-top: 8px;
+    background: #e2e8f0;
+    color: #1e293b;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.proof-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.btn-upload-proof {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #059669;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.proof-ok {
+  color: #047857;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.proof-link {
+  margin-top: 8px;
+
+  a {
+    color: #0369a1;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: underline;
+  }
+}
+
+.proof-error {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.timeline { display: flex; flex-direction: column; }
+.timeline-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding-bottom: 16px;
+  opacity: 0.4;
+  &.done { opacity: 1; }
+
+  .timeline-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #ccc;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  &.done .timeline-dot { background: #10b981; border-color: #10b981; }
+
+  .timeline-content { display: flex; flex-direction: column; gap: 2px; }
+  .timeline-label { font-size: 14px; font-weight: 600; }
+  .timeline-date { font-size: 12px; color: #999; }
+}
+
 @media (max-width: 600px) {
   .orders-page { padding: 0 8px; }
   .order-card { padding: 12px !important; }
+  .order-header { flex-wrap: wrap; gap: 6px; }
+  .modal { border-radius: 12px; }
+  .modal__header, .modal__body { padding-left: 16px; padding-right: 16px; }
 }

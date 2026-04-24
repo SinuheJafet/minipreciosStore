@@ -2,9 +2,52 @@
 <div class="order-success" *ngIf="orderPlaced">
   <div class="order-success__card">
     <div class="success-icon">✅</div>
-    <h1>¡Pedido confirmado!</h1>
-    <p>Tu pedido <strong>#{{ orderId }}</strong> ha sido recibido correctamente.</p>
-    <p class="hint">Recibirás un email de confirmación en breve.</p>
+    <h1>¡Pedido generado!</h1>
+    <p>Tu pedido <strong>#{{ orderId }}</strong> fue creado correctamente.</p>
+    <p class="hint">Para continuar, realiza la transferencia y sube tu comprobante.</p>
+
+    <div class="transfer-card">
+      <h3>Datos bancarios</h3>
+      <ng-container *ngIf="paymentAccounts.length > 0; else noAccounts">
+        <div class="account-option" *ngFor="let account of paymentAccounts">
+          <p><strong>{{ account.alias }}</strong> <span *ngIf="account.isDefault">(Predeterminada)</span></p>
+          <p><strong>Banco:</strong> {{ account.bank }}</p>
+          <p><strong>Beneficiario:</strong> {{ account.accountName }}</p>
+          <p><strong>CLABE:</strong> {{ account.clabe }}</p>
+          <p *ngIf="account.accountNumber"><strong>Cuenta:</strong> {{ account.accountNumber }}</p>
+          <p *ngIf="account.instructions">{{ account.instructions }}</p>
+        </div>
+      </ng-container>
+      <ng-template #noAccounts>
+        <p>No hay cuentas bancarias disponibles por el momento. Contacta soporte.</p>
+      </ng-template>
+      <p class="transfer-concept"><strong>Concepto obligatorio:</strong> Pedido #{{ orderId }}</p>
+    </div>
+
+    <div class="proof-uploader">
+      <label for="proofFile">Subir comprobante (JPG, PNG, PDF - máx. 5MB)</label>
+      <label
+        class="proof-dropzone"
+        [class.drag-active]="isProofDragActive"
+        for="proofFile"
+        (dragover)="onProofDragOver($event)"
+        (dragleave)="onProofDragLeave($event)"
+        (drop)="onProofDrop($event)">
+        <span class="proof-dropzone__title">Arrastra y suelta tu comprobante aqui</span>
+        <span class="proof-dropzone__hint">o haz clic para seleccionar archivo</span>
+        <span class="proof-dropzone__file" *ngIf="proofFile">Archivo: {{ proofFile.name }}</span>
+      </label>
+      <input id="proofFile" class="proof-input-hidden" type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="onProofSelected($event)">
+      <button class="btn-orders" [disabled]="!proofFile || uploadingProof" (click)="uploadPaymentProof()">
+        {{ uploadingProof ? 'Enviando...' : 'Enviar comprobante' }}
+      </button>
+      <p class="proof-link" *ngIf="proofPreviewUrl">
+        <a [href]="proofPreviewUrl" target="_blank" rel="noopener">Ver comprobante cargado</a>
+      </p>
+      <p class="proof-ok" *ngIf="proofSuccess">{{ proofSuccess }}</p>
+      <p class="proof-error" *ngIf="proofError">{{ proofError }}</p>
+    </div>
+
     <div class="success-actions">
       <a routerLink="/orders" class="btn-orders">Ver mis pedidos</a>
       <a routerLink="/" class="btn-home">Seguir comprando</a>
@@ -39,22 +82,48 @@
         <!-- Step 1: Shipping -->
         <form [formGroup]="shippingForm" *ngIf="step === 1">
           <h2>Dirección de envío</h2>
-          <div class="form-grid">
-            <div class="form-group full">
-              <label>Nombre completo</label>
-              <input type="text" formControlName="fullName" placeholder="Juan García">
-              <span class="error" *ngIf="shippingForm.get('fullName')?.invalid && shippingForm.get('fullName')?.touched">Nombre requerido (min. 3 caracteres)</span>
+
+          <!-- Saved addresses (logged-in only) -->
+          <div class="saved-options" *ngIf="isLoggedIn && savedAddresses.length > 0 && !useNewAddress">
+            <div class="saved-option"
+                 *ngFor="let addr of savedAddresses"
+                 [class.selected]="selectedAddressId === addr.id"
+                 (click)="selectAddress(addr)">
+              <div class="saved-option__radio"></div>
+              <div class="saved-option__body">
+                <span class="saved-option__title">{{ addr.fullName }}</span>
+                <span class="saved-option__sub">{{ addr.address }}, {{ addr.city }} {{ addr.zipCode }} · {{ addr.phone }}</span>
+              </div>
+              <span class="saved-option__badge" *ngIf="addr.isDefault">Predeterminada</span>
             </div>
-            <div class="form-group">
-              <label>Email</label>
-              <input type="email" formControlName="email" placeholder="juan@email.com">
-              <span class="error" *ngIf="shippingForm.get('email')?.invalid && shippingForm.get('email')?.touched">Email inválido</span>
-            </div>
-            <div class="form-group">
-              <label>Teléfono</label>
-              <input type="tel" formControlName="phone" placeholder="612 345 678">
-              <span class="error" *ngIf="shippingForm.get('phone')?.invalid && shippingForm.get('phone')?.touched">Teléfono inválido</span>
-            </div>
+            <button type="button" class="btn-alt-option" (click)="useNewAddress = true">
+              + Usar otra dirección
+            </button>
+          </div>
+
+          <!-- Manual form -->
+          <div *ngIf="!isLoggedIn || useNewAddress || savedAddresses.length === 0">
+            <button type="button" class="btn-alt-option" style="margin-bottom:1rem"
+                    *ngIf="isLoggedIn && savedAddresses.length > 0"
+                    (click)="useNewAddress = false">
+              ← Usar dirección guardada
+            </button>
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Nombre completo</label>
+                <input type="text" formControlName="fullName" placeholder="Juan García">
+                <span class="error" *ngIf="shippingForm.get('fullName')?.invalid && shippingForm.get('fullName')?.touched">Nombre requerido (min. 3 caracteres)</span>
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" formControlName="email" placeholder="juan@email.com">
+                <span class="error" *ngIf="shippingForm.get('email')?.invalid && shippingForm.get('email')?.touched">Email inválido</span>
+              </div>
+              <div class="form-group">
+                <label>Teléfono</label>
+                <input type="tel" formControlName="phone" placeholder="612 345 678">
+                <span class="error" *ngIf="shippingForm.get('phone')?.invalid && shippingForm.get('phone')?.touched">Teléfono inválido</span>
+              </div>
             <div class="form-group full">
               <label>Dirección</label>
               <input type="text" formControlName="address" placeholder="Calle Mayor 123, 2ºB">
@@ -71,66 +140,38 @@
             <div class="form-group">
               <label>Código postal</label>
               <input type="text" formControlName="zipCode" placeholder="28001">
-              <span class="error" *ngIf="shippingForm.get('zipCode')?.invalid && shippingForm.get('zipCode')?.touched">CP debe tener 5 dígitos</span>
+              <span class="error" *ngIf="shippingForm.get('zipCode')?.invalid && shippingForm.get('zipCode')?.touched">CP debe tener 4-6 dígitos</span>
             </div>
             <div class="form-group">
               <label>País</label>
               <select formControlName="country">
-                <option value="España">España</option>
-                <option value="Portugal">Portugal</option>
-                <option value="Francia">Francia</option>
-                <option value="Italia">Italia</option>
+                <option *ngFor="let c of countries" [value]="c">{{ c }}</option>
               </select>
             </div>
           </div>
-          <button class="btn-next" (click)="nextStep()" [disabled]="shippingForm.invalid">Continuar al pago →</button>
+          </div><!-- end manual form -->
+          <button class="btn-next" (click)="nextStep()" [disabled]="!shippingValid">Continuar al pago →</button>
         </form>
 
         <!-- Step 2: Payment -->
         <div *ngIf="step === 2">
           <h2>Método de pago</h2>
-          <div class="payment-methods">
-            <label class="payment-method" [class.selected]="paymentMethod === 'card'">
-              <input type="radio" [(ngModel)]="paymentMethod" value="card">
-              <span>💳 Tarjeta de crédito/débito</span>
-            </label>
-            <label class="payment-method" [class.selected]="paymentMethod === 'paypal'">
-              <input type="radio" [(ngModel)]="paymentMethod" value="paypal">
-              <span>🔵 PayPal</span>
-            </label>
-            <label class="payment-method" [class.selected]="paymentMethod === 'bizum'">
-              <input type="radio" [(ngModel)]="paymentMethod" value="bizum">
-              <span>📱 Bizum</span>
-            </label>
-          </div>
 
-          <form [formGroup]="paymentForm" *ngIf="paymentMethod === 'card'" class="card-form">
-            <div class="form-group full">
-              <label>Nombre en la tarjeta</label>
-              <input type="text" formControlName="cardName" placeholder="JUAN GARCIA">
-            </div>
-            <div class="form-group full">
-              <label>Número de tarjeta</label>
-              <input type="text" formControlName="cardNumber" placeholder="1234 5678 9012 3456" maxlength="16" (input)="formatCardNumber($event)">
-              <span class="error" *ngIf="paymentForm.get('cardNumber')?.invalid && paymentForm.get('cardNumber')?.touched">Número de 16 dígitos requerido</span>
-            </div>
-            <div class="form-group">
-              <label>Expiración</label>
-              <input type="text" formControlName="expiry" placeholder="MM/AA">
-            </div>
-            <div class="form-group">
-              <label>CVV</label>
-              <input type="text" formControlName="cvv" placeholder="123" maxlength="4">
-            </div>
-          </form>
-
-          <div class="alt-payment" *ngIf="paymentMethod !== 'card'">
-            <p>Serás redirigido a {{ paymentMethod === 'paypal' ? 'PayPal' : 'Bizum' }} para completar el pago.</p>
+          <div class="transfer-info-box">
+            <p><strong>Pago por transferencia bancaria</strong></p>
+            <p>Una vez generado el pedido, te mostraremos los datos de la cuenta y deberás subir tu comprobante.</p>
+            <p>El concepto de la transferencia debe incluir el número de pedido.</p>
+            <p><strong>Ejemplo:</strong> si tu pedido es <strong>#1258</strong>, en tu app bancaria registra:</p>
+            <p>- Banco destino: {{ defaultPaymentAccount?.bank || 'Banco configurado en tienda' }}</p>
+            <p>- CLABE: {{ defaultPaymentAccount?.clabe || 'CLABE configurada en tienda' }}</p>
+            <p>- Monto: el total de tu pedido</p>
+            <p>- Concepto: <strong>Pedido #1258</strong></p>
+            <p>Después sube la captura o PDF del comprobante desde esta pantalla o desde <strong>Mis pedidos</strong>.</p>
           </div>
 
           <div class="step-actions">
             <button class="btn-back" (click)="prevStep()">← Volver</button>
-            <button class="btn-next" (click)="nextStep()">Revisar pedido →</button>
+            <button class="btn-next" (click)="nextStep()" [disabled]="!paymentValid">Revisar pedido →</button>
           </div>
         </div>
 
@@ -139,13 +180,21 @@
           <h2>Revisar pedido</h2>
           <div class="review-section">
             <h3>Dirección de envío</h3>
-            <p>{{ shippingForm.value.fullName }}</p>
-            <p>{{ shippingForm.value.address }}, {{ shippingForm.value.zipCode }}</p>
-            <p>{{ shippingForm.value.city }}, {{ shippingForm.value.country }}</p>
+            <ng-container *ngIf="isLoggedIn && !useNewAddress && selectedAddress; else manualAddrReview">
+              <p><strong>{{ selectedAddress.fullName }}</strong></p>
+              <p>{{ selectedAddress.address }}, {{ selectedAddress.zipCode }}</p>
+              <p>{{ selectedAddress.city }}, {{ selectedAddress.country }}</p>
+            </ng-container>
+            <ng-template #manualAddrReview>
+              <p><strong>{{ shippingForm.value.fullName }}</strong></p>
+              <p>{{ shippingForm.value.address }}, {{ shippingForm.value.zipCode }}</p>
+              <p>{{ shippingForm.value.city }}, {{ shippingForm.value.country }}</p>
+            </ng-template>
           </div>
           <div class="review-section">
             <h3>Método de pago</h3>
-            <p>{{ paymentMethod === 'card' ? '💳 Tarjeta terminada en ' + (paymentForm.value.cardNumber || '****').slice(-4) : (paymentMethod === 'paypal' ? '🔵 PayPal' : '📱 Bizum') }}</p>
+            <p>🏦 Transferencia bancaria</p>
+            <p class="review-note">Después de generar el pedido, deberás transferir y subir comprobante con el concepto del pedido.</p>
           </div>
           <div class="step-actions">
             <button class="btn-back" (click)="prevStep()">← Volver</button>
@@ -165,14 +214,14 @@
               <span class="name">{{ item.product.name }}</span>
               <span class="qty">x{{ item.quantity }}</span>
             </div>
-            <span class="price">{{ item.product.price * item.quantity | currency:'EUR':'symbol':'1.2-2' }}</span>
+            <span class="price">{{ item.product.price * item.quantity | currency:'MXN':'$':'1.2-2' }}</span>
           </div>
         </div>
         <div class="order-totals">
-          <div><span>Subtotal</span><span>{{ cart.subtotal | currency:'EUR':'symbol':'1.2-2' }}</span></div>
-          <div *ngIf="cart.discount > 0"><span class="green">Descuento</span><span class="green">-{{ cart.subtotal * cart.discount / 100 | currency:'EUR':'symbol':'1.2-2' }}</span></div>
-          <div><span>Envío</span><span [class.green]="cart.shipping === 0">{{ cart.shipping === 0 ? 'Gratis' : (cart.shipping | currency:'EUR':'symbol':'1.2-2') }}</span></div>
-          <div class="total"><span>Total</span><span>{{ cart.total | currency:'EUR':'symbol':'1.2-2' }}</span></div>
+          <div><span>Subtotal</span><span>{{ cart.subtotal | currency:'MXN':'$':'1.2-2' }}</span></div>
+          <div *ngIf="cart.discount > 0"><span class="green">Descuento</span><span class="green">-{{ cart.subtotal * cart.discount / 100 | currency:'MXN':'$':'1.2-2' }}</span></div>
+          <div><span>Envío</span><span [class.green]="cart.shipping === 0">{{ cart.shipping === 0 ? 'Gratis' : (cart.shipping | currency:'MXN':'$':'1.2-2') }}</span></div>
+          <div class="total"><span>Total</span><span>{{ cart.total | currency:'MXN':'$':'1.2-2' }}</span></div>
         </div>
         <div class="secure-badge">🔒 Pago 100% seguro y encriptado</div>
       </div>

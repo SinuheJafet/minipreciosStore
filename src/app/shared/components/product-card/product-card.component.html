@@ -15,7 +15,7 @@
   <div class="product-card__image">
     <img [src]="product.images[0]" [alt]="product.name" loading="lazy">
     <div class="product-card__overlay">
-      <button class="btn-quick-view">Vista rápida</button>
+      <button class="btn-quick-view" (click)="openQuickView($event)">Vista rápida</button>
     </div>
   </div>
 
@@ -34,8 +34,8 @@
 
     <!-- Price -->
     <div class="price-row">
-      <span class="price">{{ product.price | currency:'EUR':'symbol':'1.0-0' }}</span>
-      <span class="original-price" *ngIf="product.originalPrice">{{ product.originalPrice | currency:'EUR':'symbol':'1.0-0' }}</span>
+      <span class="price">{{ product.price | currency:'MXN':'$':'1.2-2' }}</span>
+      <span class="original-price" *ngIf="product.originalPrice">{{ product.originalPrice | currency:'MXN':'$':'1.2-2' }}</span>
     </div>
 
     <!-- Add to cart -->
@@ -49,5 +49,78 @@
       </svg>
       {{ addedToCart ? '¡Añadido!' : product.stock === 0 ? 'Sin stock' : 'Añadir al carrito' }}
     </button>
+  </div>
+</div>
+
+<!-- Quick View Modal -->
+<div class="qv-overlay" *ngIf="quickViewOpen" (click)="closeQuickView($event)">
+  <div class="qv-modal" (click)="$event.stopPropagation()">
+    <button class="qv-close" (click)="closeQuickView($event)">✕</button>
+
+    <div class="qv-body">
+      <!-- Imagen -->
+      <div class="qv-image">
+        <img [src]="product.images[0]" [alt]="product.name">
+        <span class="badge qv-badge" *ngIf="product.badge" [class]="'badge--' + product.badge">
+          {{ product.badge === 'new' ? 'Nuevo' : product.badge === 'sale' ? '-' + discountPercent + '%' : product.badge === 'hot' ? '🔥 Hot' : 'Bestseller' }}
+        </span>
+      </div>
+
+      <!-- Info -->
+      <div class="qv-info">
+        <div class="qv-brand">{{ product.brand }}</div>
+        <h2 class="qv-name">{{ product.name }}</h2>
+
+        <!-- Rating -->
+        <div class="qv-rating">
+          <span *ngFor="let s of [1,2,3,4,5]" class="star" [class.filled]="s <= product.rating">★</span>
+          <span class="qv-reviews">({{ product.reviews | number }})</span>
+        </div>
+
+        <!-- Precio propio -->
+        <div class="qv-price-row">
+          <span class="qv-price">{{ product.price | currency:'MXN':'$':'1.2-2' }}</span>
+          <span class="qv-original" *ngIf="product.originalPrice">{{ product.originalPrice | currency:'MXN':'$':'1.2-2' }}</span>
+          <span class="qv-discount-badge" *ngIf="product.originalPrice">-{{ discountPercent }}%</span>
+        </div>
+
+        <!-- Comparativa de precios -->
+        <div class="qv-competitors" *ngIf="product.competitorPrices?.length">
+          <h4 class="qv-comp-title">Comparativa de precios</h4>
+          <div class="qv-comp-list">
+            <div class="qv-comp-item qv-comp-item--own">
+              <span class="qv-comp-platform">miniprecios</span>
+              <span class="qv-comp-price">{{ product.price | currency:'MXN':'$':'1.2-2' }}</span>
+              <span class="qv-comp-badge">Mejor precio</span>
+            </div>
+            <div class="qv-comp-item" *ngFor="let cp of product.competitorPrices">
+              <span class="qv-comp-platform">{{ cp.platform }}</span>
+              <span class="qv-comp-price" [class.higher]="cp.price > product.price">
+                {{ cp.price | currency:'MXN':'$':'1.2-2' }}
+              </span>
+              <a *ngIf="cp.url" [href]="cp.url" target="_blank" rel="noopener" class="qv-comp-link" (click)="$event.stopPropagation()">Ver</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Descripción corta -->
+        <p class="qv-desc" *ngIf="product.description">{{ product.description | slice:0:120 }}{{ product.description.length > 120 ? '…' : '' }}</p>
+
+        <!-- Stock -->
+        <p class="qv-stock" [class.low]="product.stock > 0 && product.stock <= 5">
+          <ng-container *ngIf="product.stock === 0">Sin stock</ng-container>
+          <ng-container *ngIf="product.stock > 0 && product.stock <= 5">¡Solo quedan {{ product.stock }}!</ng-container>
+          <ng-container *ngIf="product.stock > 5">En stock ({{ product.stock }} disponibles)</ng-container>
+        </p>
+
+        <!-- Acciones -->
+        <div class="qv-actions">
+          <button class="qv-btn-cart" (click)="addToCartFromQV($event)" [class.added]="addedToCart" [disabled]="product.stock === 0">
+            {{ addedToCart ? '¡Añadido!' : 'Añadir al carrito' }}
+          </button>
+          <button class="qv-btn-detail" (click)="goToDetail()">Ver ficha completa</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

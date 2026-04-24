@@ -16,15 +16,30 @@ export class ProductService implements OnDestroy {
   constructor(private http: HttpClient, private rt: RealtimeService) {
     // Update cached products in-place on hub events
     this._subs.add(
-      this.rt.on<Product>('ProductUpdated').subscribe(p => {
+      this.rt.on<Partial<Product> & { id: number }>('ProductUpdated').subscribe(p => {
         if (!this._cache.value.length) return;
-        this._cache.next(this._cache.value.map(x => x.id === p.id ? p : x));
+        this._cache.next(this._cache.value.map(x => x.id === p.id ? this.mergeProductUpdate(x, p) : x));
+
+        // ProductUpdated payload can be partial (e.g. stock/price only).
+        // Rehydrate from API when rich fields are missing to keep quick view in sync.
+        const hasCompetitorPricesField = Object.prototype.hasOwnProperty.call(p, 'competitorPrices');
+        const hasImages = Array.isArray(p.images) && p.images.some(img => typeof img === 'string' && img.trim().length > 0);
+        if (!hasCompetitorPricesField || !hasImages) {
+          this.refreshProductFromApi(p.id);
+        }
       })
     );
     this._subs.add(
       this.rt.on<Product>('ProductCreated').subscribe(p => {
         if (!this._cache.value.length) return;
+        if (this._cache.value.some(x => x.id === p.id)) return;
         this._cache.next([...this._cache.value, p]);
+      })
+    );
+    this._subs.add(
+      this.rt.on<{ productId: number; stock: number }>('InventoryChanged').subscribe(({ productId, stock }) => {
+        if (!this._cache.value.length) return;
+        this._cache.next(this._cache.value.map(x => x.id === productId ? { ...x, stock } : x));
       })
     );
     this._subs.add(
@@ -91,6 +106,35 @@ export class ProductService implements OnDestroy {
   /** Live stream of all cached products — use in components that need real-time updates */
   get products$(): Observable<Product[]> {
     return this._cache.asObservable();
+  }
+
+  private mergeProductUpdate(base: Product, patch: Partial<Product> & { id: number }): Product {
+    const merged = { ...base, ...patch } as Product;
+
+    const hasImagesField = Object.prototype.hasOwnProperty.call(patch, 'images');
+    // Some hub payloads are partial and may send images as [] or [''] even when unchanged.
+    const hasValidImages = Array.isArray(patch.images)
+      && patch.images.some(img => typeof img === 'string' && img.trim().length > 0);
+    if (!hasImagesField || !hasValidImages) {
+      merged.images = base.images;
+    }
+
+    const hasCompetitorPricesField = Object.prototype.hasOwnProperty.call(patch, 'competitorPrices');
+    // Preserve previous comparison only when payload does not include this field.
+    if (!hasCompetitorPricesField) {
+      merged.competitorPrices = base.competitorPrices;
+    }
+
+    return merged;
+  }
+
+  private refreshProductFromApi(id: number): void {
+    this.http.get<Product>(`${this.api}/products/${id}`).pipe(
+      catchError(() => of(undefined))
+    ).subscribe(full => {
+      if (!full) return;
+      this._cache.next(this._cache.value.map(x => x.id === id ? this.mergeProductUpdate(x, full) : x));
+    });
   }
 
   ngOnDestroy(): void { this._subs.unsubscribe(); }

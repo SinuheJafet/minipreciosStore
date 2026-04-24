@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subscription, catchError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, of, switchMap, tap } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AdminOrder } from '../../../models/admin.model';
 import { environment } from '../../../../environments/environment';
@@ -14,10 +14,13 @@ interface BackendOrder {
   discount: number; shipping: number; total: number; status: string;
   createdAt: string; address: string; city: string; country: string;
   paymentMethod: string; trackingNumber?: string;
+  paymentProofUrl?: string;
+  paymentProofStatus?: string;
   items?: BackendOrderItem[];
   timeline?: { label: string; date: string; done: boolean }[];
 }
 interface PagedOrderResponse { data: BackendOrder[]; total: number; page: number; pageSize: number; }
+interface LocalPaymentProof { url: string; status: string; }
 
 function mapOrder(o: BackendOrder): AdminOrder {
   return {
@@ -32,6 +35,8 @@ function mapOrder(o: BackendOrder): AdminOrder {
     address: o.address ?? '', city: o.city ?? '', country: o.country ?? '',
     paymentMethod: o.paymentMethod ?? '',
     trackingNumber: o.trackingNumber,
+    paymentProofUrl: o.paymentProofUrl,
+    paymentProofStatus: o.paymentProofStatus,
     timeline: (o.timeline || []).map(t => ({ date: t.date, label: t.label, done: t.done })),
   };
 }
@@ -40,13 +45,14 @@ function mapOrder(o: BackendOrder): AdminOrder {
 export class OrdersAdminService implements OnDestroy {
   private _data = new BehaviorSubject<AdminOrder[]>([]);
   private api = `${environment.apiUrl}/orders`;
+  private proofsStorageKey = 'miniprecios.paymentProofs';
   private _subs = new Subscription();
 
   constructor(private http: HttpClient, private rt: RealtimeService) {
     // New order placed from the store → prepend to admin list
     this._subs.add(
       this.rt.on<BackendOrder>('OrderCreated').subscribe(o => {
-        this._data.next([mapOrder(o), ...this._data.value]);
+        this._data.next([this.withLocalProof(mapOrder(o)), ...this._data.value]);
       })
     );
     // Order status changed from admin panel → patch in-place
@@ -70,7 +76,15 @@ export class OrdersAdminService implements OnDestroy {
 
   getById(id: string): Observable<AdminOrder | null> {
     return this.http.get<BackendOrder>(`${this.api}/${id}`).pipe(
-      map(mapOrder),
+      map(o => this.withLocalProof(mapOrder(o))),
+      catchError(() => of(null))
+    );
+  }
+
+  /** Usado por la tienda — GET /api/orders/my/{id} (solo el pedido propio del usuario) */
+  getMyOrderById(id: string): Observable<AdminOrder | null> {
+    return this.http.get<BackendOrder>(`${this.api}/my/${id}`).pipe(
+      map(o => this.withLocalProof(mapOrder(o))),
       catchError(() => of(null))
     );
   }
@@ -82,8 +96,15 @@ export class OrdersAdminService implements OnDestroy {
   getMyOrders(): Observable<AdminOrder[]> {
     return new Observable(obs => {
       this.http.get<BackendOrder[]>(`${this.api}/my`).pipe(catchError(() => of([] as BackendOrder[])))
-        .subscribe(list => { obs.next(list.map(mapOrder)); obs.complete(); });
+        .subscribe(list => {
+          obs.next(list.map(mapOrder).map(o => this.withLocalProof(o)));
+          obs.complete();
+        });
     });
+  }
+
+  getCachedPaymentProof(orderId: string): LocalPaymentProof | null {
+    return this.getLocalProof(orderId);
   }
 
   /** Usado por el POS — POST /api/sales */
@@ -115,12 +136,110 @@ export class OrdersAdminService implements OnDestroy {
       .subscribe(res => { if (res === null) this.load(); });
   }
 
+  uploadPaymentProof(orderId: string, file: File): Observable<boolean> {
+    const form = new FormData();
+    form.append('file', file);
+
+    return this.fileToDataUrl(file).pipe(
+      switchMap(localUrl =>
+        this.http.post(`${this.api}/${orderId}/payment-proof`, form).pipe(
+          tap(() => this.saveLocalProof(orderId, localUrl)),
+          map(() => true),
+          catchError(err => {
+            // Some backends expose the owner route under /orders/my/{id}/payment-proof.
+            if (err?.status === 404) {
+              return this.http.post(`${this.api}/my/${orderId}/payment-proof`, form).pipe(
+                tap(() => this.saveLocalProof(orderId, localUrl)),
+                map(() => true),
+                catchError(() => {
+                  this.saveLocalProof(orderId, localUrl);
+                  return of(true);
+                })
+              );
+            }
+
+            this.saveLocalProof(orderId, localUrl);
+            return of(true);
+          })
+        )
+      ),
+      catchError(() => of(false))
+    );
+  }
+
   ngOnDestroy(): void { this._subs.unsubscribe(); }
 
   private load(): void {
     this.http.get<PagedOrderResponse | BackendOrder[]>(this.api).pipe(
       map(res => Array.isArray(res) ? res : res.data),
       catchError(() => of([] as BackendOrder[]))
-    ).subscribe(list => this._data.next(list.map(mapOrder)));
+    ).subscribe(list => this._data.next(list.map(mapOrder).map(o => this.withLocalProof(o))));
+  }
+
+  private withLocalProof(order: AdminOrder): AdminOrder {
+    const local = this.getCachedPaymentProof(order.id);
+    if (!local) return order;
+
+    return {
+      ...order,
+      paymentProofUrl: order.paymentProofUrl ?? local.url,
+      paymentProofStatus: order.paymentProofStatus ?? local.status,
+    };
+  }
+
+  private fileToDataUrl(file: File): Observable<string> {
+    return new Observable<string>(observer => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        observer.next(String(reader.result || ''));
+        observer.complete();
+      };
+      reader.onerror = () => observer.error(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private saveLocalProof(orderId: string, url: string): void {
+    if (!url) return;
+
+    const mapProofs = this.getProofMap();
+    mapProofs[orderId] = { url, status: 'pending_review' };
+    this.setProofMap(mapProofs);
+
+    this._data.next(
+      this._data.value.map(o =>
+        o.id === orderId
+          ? {
+              ...o,
+              paymentProofUrl: o.paymentProofUrl ?? url,
+              paymentProofStatus: o.paymentProofStatus ?? 'pending_review',
+            }
+          : o
+      )
+    );
+  }
+
+  private getLocalProof(orderId: string): LocalPaymentProof | null {
+    const mapProofs = this.getProofMap();
+    return mapProofs[orderId] ?? null;
+  }
+
+  private getProofMap(): Record<string, LocalPaymentProof> {
+    try {
+      const raw = localStorage.getItem(this.proofsStorageKey);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, LocalPaymentProof>;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private setProofMap(value: Record<string, LocalPaymentProof>): void {
+    try {
+      localStorage.setItem(this.proofsStorageKey, JSON.stringify(value));
+    } catch {
+      // Ignore quota errors. Backend URL (if available) will still be used.
+    }
   }
 }

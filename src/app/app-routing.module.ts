@@ -11,6 +11,7 @@ import { AuthComponent } from './pages/auth/auth.component';
 import { AdminComponent } from './pages/admin/admin.component';
 
 import { OrdersComponent } from './pages/orders/orders.component';
+import { ProfileComponent } from './pages/profile/profile.component';
 import { AdminGuard } from './guards/admin.guard';
 
 const routes: Routes = [
@@ -21,6 +22,7 @@ const routes: Routes = [
   { path: 'checkout', component: CheckoutComponent },
   { path: 'wishlist', component: WishlistComponent },
   { path: 'orders', component: OrdersComponent },
+  { path: 'profile', component: ProfileComponent },
   { path: 'auth', component: AuthComponent },
   { path: 'admin', component: AdminComponent, canActivate: [AdminGuard] },
   { path: '404', component: NotFoundComponent },

@@ -51,6 +51,10 @@
         <div class="order-block">
           <h4>Pago</h4>
           <p class="ob-name">{{ selectedOrder.paymentMethod }}</p>
+          <p class="ob-sub" *ngIf="selectedOrder.paymentProofStatus">Comprobante: {{ selectedOrder.paymentProofStatus }}</p>
+          <p class="ob-sub" *ngIf="selectedOrder.paymentProofUrl">
+            <a [href]="selectedOrder.paymentProofUrl" target="_blank" rel="noopener">Ver comprobante</a>
+          </p>
           <p class="ob-sub" *ngIf="selectedOrder.trackingNumber">Seguimiento: {{ selectedOrder.trackingNumber }}</p>
         </div>
       </div>

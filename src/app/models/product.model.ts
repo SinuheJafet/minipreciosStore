@@ -1,4 +1,5 @@
 export interface CompetitorPrice {
+  id?: number;
   platform: string;
   price: number;
   url?: string;

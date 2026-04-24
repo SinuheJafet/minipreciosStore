@@ -1,0 +1,213 @@
+<div class="profile-page">
+  <div class="profile-page__container">
+    <h1>Mi cuenta</h1>
+
+    <!-- Tabs -->
+    <div class="profile-tabs">
+      <button [class.active]="activeTab === 'info'" (click)="setTab('info')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Datos personales
+      </button>
+      <button [class.active]="activeTab === 'addresses'" (click)="setTab('addresses')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Mis direcciones
+      </button>
+      <button [class.active]="activeTab === 'cards'" (click)="setTab('cards')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Métodos de pago
+      </button>
+    </div>
+
+    <!-- ── Info personal ─────────────────────────────────────────────────── -->
+    <div class="profile-section" *ngIf="activeTab === 'info'">
+      <form [formGroup]="infoForm" (ngSubmit)="saveInfo()" class="profile-form">
+        <h2>Datos personales</h2>
+
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Nombre completo</label>
+            <input type="text" formControlName="name" placeholder="Tu nombre">
+            <span class="error" *ngIf="infoForm.get('name')?.invalid && infoForm.get('name')?.touched">
+              Nombre requerido (min. 2 caracteres)
+            </span>
+          </div>
+          <div class="form-group full">
+            <label>Email</label>
+            <input type="email" formControlName="email" placeholder="tu@email.com">
+            <span class="error" *ngIf="infoForm.get('email')?.invalid && infoForm.get('email')?.touched">
+              Email inválido
+            </span>
+          </div>
+        </div>
+
+        <h3 class="section-divider">Cambiar contraseña <span>(opcional)</span></h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Contraseña actual</label>
+            <input type="password" formControlName="currentPassword" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label>Nueva contraseña</label>
+            <input type="password" formControlName="newPassword" placeholder="••••••••">
+            <span class="error" *ngIf="infoForm.get('newPassword')?.invalid && infoForm.get('newPassword')?.touched">
+              Mínimo 6 caracteres
+            </span>
+          </div>
+        </div>
+
+        <p class="success-msg" *ngIf="infoSuccess">✅ {{ infoSuccess }}</p>
+        <p class="error-msg" *ngIf="infoError">⚠️ {{ infoError }}</p>
+
+        <button type="submit" class="btn-save" [disabled]="infoForm.invalid || infoSaving">
+          {{ infoSaving ? 'Guardando...' : 'Guardar cambios' }}
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Direcciones ───────────────────────────────────────────────────── -->
+    <div class="profile-section" *ngIf="activeTab === 'addresses'">
+      <div class="section-header">
+        <h2>Mis direcciones</h2>
+        <button class="btn-add" (click)="openAddressForm()" *ngIf="!showAddressForm">
+          + Añadir dirección
+        </button>
+      </div>
+
+      <!-- Address form -->
+      <div class="card-form-panel" *ngIf="showAddressForm">
+        <h3>{{ editingAddress ? 'Editar dirección' : 'Nueva dirección' }}</h3>
+        <form [formGroup]="addressForm" (ngSubmit)="saveAddress()" class="profile-form">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Nombre completo</label>
+              <input type="text" formControlName="fullName" placeholder="Juan García">
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input type="tel" formControlName="phone" placeholder="612 345 678">
+            </div>
+            <div class="form-group full">
+              <label>Dirección</label>
+              <input type="text" formControlName="address" placeholder="Calle Mayor 123, 2ºB">
+            </div>
+            <div class="form-group">
+              <label>Ciudad</label>
+              <input type="text" formControlName="city" placeholder="Madrid">
+            </div>
+            <div class="form-group">
+              <label>Estado / Provincia</label>
+              <input type="text" formControlName="state" placeholder="Madrid">
+            </div>
+            <div class="form-group">
+              <label>Código postal</label>
+              <input type="text" formControlName="zipCode" placeholder="28001">
+            </div>
+            <div class="form-group">
+              <label>País</label>
+              <select formControlName="country">
+                <option *ngFor="let c of countries" [value]="c">{{ c }}</option>
+              </select>
+            </div>
+          </div>
+          <p class="error-msg" *ngIf="addressError">⚠️ {{ addressError }}</p>
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" (click)="cancelAddressForm()">Cancelar</button>
+            <button type="submit" class="btn-save" [disabled]="addressForm.invalid || addressSaving">
+              {{ addressSaving ? 'Guardando...' : 'Guardar dirección' }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Address list -->
+      <div class="address-loading" *ngIf="addressLoading">Cargando...</div>
+      <div class="empty-state" *ngIf="!addressLoading && addresses.length === 0 && !showAddressForm">
+        <p>No tienes direcciones guardadas.</p>
+      </div>
+      <div class="address-list" *ngIf="!addressLoading">
+        <div class="address-card" *ngFor="let addr of addresses" [class.default]="addr.isDefault">
+          <div class="address-card__badge" *ngIf="addr.isDefault">Predeterminada</div>
+          <p class="addr-name">{{ addr.fullName }}</p>
+          <p>{{ addr.address }}</p>
+          <p>{{ addr.city }}, {{ addr.state }} {{ addr.zipCode }}</p>
+          <p>{{ addr.country }} · {{ addr.phone }}</p>
+          <div class="address-card__actions">
+            <button class="btn-link" (click)="openAddressForm(addr)">Editar</button>
+            <button class="btn-link btn-link--default" (click)="setDefaultAddress(addr.id!)" *ngIf="!addr.isDefault">
+              Usar por defecto
+            </button>
+            <button class="btn-link btn-link--danger" (click)="deleteAddress(addr.id!)">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tarjetas ──────────────────────────────────────────────────────── -->
+    <div class="profile-section" *ngIf="activeTab === 'cards'">
+      <div class="section-header">
+        <h2>Métodos de pago</h2>
+        <button class="btn-add" (click)="openCardForm()" *ngIf="!showCardForm">
+          + Añadir tarjeta
+        </button>
+      </div>
+
+      <!-- Card form -->
+      <div class="card-form-panel" *ngIf="showCardForm">
+        <h3>Nueva tarjeta</h3>
+        <form [formGroup]="cardForm" (ngSubmit)="saveCard()" class="profile-form">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Nombre en la tarjeta</label>
+              <input type="text" formControlName="cardName" placeholder="JUAN GARCIA">
+            </div>
+            <div class="form-group full">
+              <label>Número de tarjeta</label>
+              <input type="text" formControlName="cardNumber" placeholder="•••• •••• •••• ••••"
+                     maxlength="16" (input)="formatCardInput($event)">
+              <span class="error" *ngIf="cardForm.get('cardNumber')?.invalid && cardForm.get('cardNumber')?.touched">
+                Número de 16 dígitos
+              </span>
+            </div>
+            <div class="form-group">
+              <label>Expiración (MM/AA)</label>
+              <input type="text" formControlName="expiry" placeholder="12/26">
+            </div>
+            <div class="form-group">
+              <label>CVV</label>
+              <input type="password" formControlName="cvv" placeholder="•••" maxlength="4">
+            </div>
+          </div>
+          <p class="hint">🔒 Sólo guardamos los últimos 4 dígitos para identificar tu tarjeta.</p>
+          <p class="error-msg" *ngIf="cardError">⚠️ {{ cardError }}</p>
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" (click)="cancelCardForm()">Cancelar</button>
+            <button type="submit" class="btn-save" [disabled]="cardForm.invalid || cardSaving">
+              {{ cardSaving ? 'Guardando...' : 'Guardar tarjeta' }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Card list -->
+      <div class="address-loading" *ngIf="cardLoading">Cargando...</div>
+      <div class="empty-state" *ngIf="!cardLoading && cards.length === 0 && !showCardForm">
+        <p>No tienes tarjetas guardadas.</p>
+      </div>
+      <div class="address-list" *ngIf="!cardLoading">
+        <div class="address-card" *ngFor="let card of cards" [class.default]="card.isDefault">
+          <div class="address-card__badge" *ngIf="card.isDefault">Predeterminada</div>
+          <p class="addr-name">{{ brandIcon(card.brand) }} •••• •••• •••• {{ card.last4 }}</p>
+          <p>{{ card.cardName }}</p>
+          <p>Vence: {{ card.expiry }}</p>
+          <div class="address-card__actions">
+            <button class="btn-link btn-link--default" (click)="setDefaultCard(card.id!)" *ngIf="!card.isDefault">
+              Usar por defecto
+            </button>
+            <button class="btn-link btn-link--danger" (click)="deleteCard(card.id!)">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -16,8 +16,8 @@
       <h3>Precio máximo</h3>
       <input type="range" [(ngModel)]="currentMax" (input)="applyFilters()" [min]="priceRange.min" [max]="priceRange.max" step="5" class="price-slider">
       <div class="price-range-label">
-        <span>0€</span>
-        <strong>{{ currentMax | currency:'EUR':'symbol':'1.0-0' }}</strong>
+        <span>$0</span>
+        <strong>{{ currentMax | currency:'MXN':'$':'1.0-0' }}</strong>
       </div>
     </div>
   </aside>
@@ -50,7 +50,7 @@
 
     <!-- Product cards grid -->
     <div class="products-grid" *ngIf="!loading && filteredProducts.length > 0">
-      <app-product-card *ngFor="let p of filteredProducts" [product]="p"></app-product-card>
+      <app-product-card *ngFor="let p of filteredProducts; trackBy: trackByProductId" [product]="p"></app-product-card>
     </div>
   </main>
 </div>

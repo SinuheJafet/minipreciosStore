@@ -19,24 +19,163 @@
         <span class="order-date">{{ order.createdAt }}</span>
       </div>
 
-      <div class="order-items">
+      <div class="order-items-preview">
         <div *ngFor="let item of order.items" class="order-item">
           <img *ngIf="item.image" [src]="item.image" [alt]="item.name" class="order-item__img">
           <span class="order-item__name">{{ item.name }}</span>
           <span class="order-item__qty">x{{ item.qty }}</span>
-          <span class="order-item__price">{{ item.price | currency:'EUR':'symbol':'1.2-2' }}</span>
+          <span class="order-item__price">{{ item.price | currency:'MXN':'$':'1.2-2' }}</span>
         </div>
+        <p *ngIf="!order.items?.length" class="order-items-empty">Ver detalle para más información</p>
       </div>
 
       <div class="order-footer">
         <span *ngIf="order.trackingNumber" class="order-tracking">
           Tracking: <strong>{{ order.trackingNumber }}</strong>
         </span>
-        <div class="order-total">
-          <span>Total:</span>
-          <strong>{{ order.total | currency:'EUR':'symbol':'1.2-2' }}</strong>
+        <div class="order-footer__right">
+          <div class="order-total">Total: <strong>{{ order.total | currency:'MXN':'$':'1.2-2' }}</strong></div>
+          <button class="btn-detail" (click)="openDetail(order)">
+            {{ order.paymentMethod === 'bank_transfer' && order.status === 'pending' ? 'Ver detalle / subir comprobante' : 'Ver detalle' }}
+          </button>
         </div>
       </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" *ngIf="selectedOrder" (click)="closeDetail()">
+  <div class="modal" (click)="$event.stopPropagation()">
+
+    <div class="modal__header">
+      <div>
+        <h2>Pedido #{{ selectedOrder.id }}</h2>
+        <span class="order-status status-{{ selectedOrder.status }}">
+          {{ statusLabel[selectedOrder.status] || selectedOrder.status }}
+        </span>
+      </div>
+      <button class="modal__close" (click)="closeDetail()">✕</button>
+    </div>
+
+    <div *ngIf="loadingDetail" class="modal__loading">Cargando detalle...</div>
+
+    <div *ngIf="!loadingDetail" class="modal__body">
+
+      <!-- Productos -->
+      <section class="modal-section">
+        <h3>Productos</h3>
+        <div class="detail-items">
+          <div class="detail-item" *ngFor="let item of selectedOrder.items">
+            <img *ngIf="item.image" [src]="item.image" [alt]="item.name" class="detail-item__img">
+            <div class="detail-item__info">
+              <span class="detail-item__name">{{ item.name }}</span>
+              <span class="detail-item__sku" *ngIf="item.sku">SKU: {{ item.sku }}</span>
+            </div>
+            <div class="detail-item__right">
+              <span class="detail-item__qty">x{{ item.qty }}</span>
+              <span class="detail-item__price">{{ item.price | currency:'MXN':'$':'1.2-2' }}</span>
+            </div>
+          </div>
+          <p *ngIf="!selectedOrder.items?.length" class="no-items">Sin productos disponibles</p>
+        </div>
+      </section>
+
+      <!-- Totales -->
+      <section class="modal-section">
+        <h3>Resumen</h3>
+        <div class="detail-totals">
+          <div class="detail-row"><span>Subtotal</span><span>{{ selectedOrder.subtotal | currency:'MXN':'$':'1.2-2' }}</span></div>
+          <div class="detail-row" *ngIf="selectedOrder.discount > 0"><span>Descuento</span><span class="discount">-{{ selectedOrder.discount | currency:'MXN':'$':'1.2-2' }}</span></div>
+          <div class="detail-row"><span>Envío</span><span>{{ selectedOrder.shipping === 0 ? 'Gratis' : (selectedOrder.shipping | currency:'MXN':'$':'1.2-2') }}</span></div>
+          <div class="detail-row total-row"><span>Total</span><strong>{{ selectedOrder.total | currency:'MXN':'$':'1.2-2' }}</strong></div>
+        </div>
+      </section>
+
+      <!-- Dirección -->
+      <section class="modal-section" *ngIf="selectedOrder.address">
+        <h3>Dirección de envío</h3>
+        <p class="detail-address">
+          {{ selectedOrder.address }}<br>
+          {{ selectedOrder.city }}<span *ngIf="selectedOrder.country">, {{ selectedOrder.country }}</span>
+        </p>
+      </section>
+
+      <!-- Pago y tracking -->
+      <section class="modal-section">
+        <h3>Pago y seguimiento</h3>
+        <div class="detail-row"><span>Método de pago</span><span>{{ paymentLabel[selectedOrder.paymentMethod] || selectedOrder.paymentMethod }}</span></div>
+        <div class="detail-row" *ngIf="selectedOrder.paymentProofStatus">
+          <span>Comprobante</span><span>{{ proofStatusLabel[selectedOrder.paymentProofStatus] || selectedOrder.paymentProofStatus }}</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedOrder.paymentProofUrl">
+          <span>Archivo</span>
+          <a [href]="selectedOrder.paymentProofUrl" target="_blank" rel="noopener">Ver comprobante</a>
+        </div>
+        <div class="detail-row" *ngIf="selectedOrder.trackingNumber">
+          <span>Número de seguimiento</span><strong>{{ selectedOrder.trackingNumber }}</strong>
+        </div>
+      </section>
+
+      <section class="modal-section" *ngIf="selectedOrder.paymentMethod === 'bank_transfer'">
+        <h3>Transferencia bancaria</h3>
+        <div class="transfer-box">
+          <ng-container *ngIf="paymentAccounts.length > 0; else noOrderAccounts">
+            <div class="transfer-account" *ngFor="let account of paymentAccounts">
+              <p><strong>{{ account.alias }}</strong> <span *ngIf="account.isDefault">(Predeterminada)</span></p>
+              <p><strong>Banco:</strong> {{ account.bank }}</p>
+              <p><strong>Beneficiario:</strong> {{ account.accountName }}</p>
+              <p><strong>CLABE:</strong> {{ account.clabe }}</p>
+              <p *ngIf="account.accountNumber"><strong>Cuenta:</strong> {{ account.accountNumber }}</p>
+            </div>
+          </ng-container>
+          <ng-template #noOrderAccounts>
+            <p>No hay cuentas bancarias publicadas en este momento.</p>
+          </ng-template>
+          <p class="transfer-concept"><strong>Concepto obligatorio:</strong> Pedido #{{ selectedOrder.id }}</p>
+          <p><strong>Ejemplo:</strong> en tu app bancaria captura estos datos y en concepto escribe <strong>Pedido #{{ selectedOrder.id }}</strong>.</p>
+          <p><strong>Monto:</strong> {{ selectedOrder.total | currency:'MXN':'$':'1.2-2' }}</p>
+        </div>
+
+        <div class="proof-upload" *ngIf="canUploadProof">
+          <label for="proofFileOrder">Subir comprobante (JPG, PNG, PDF - máx. 5MB)</label>
+          <label
+            class="proof-dropzone"
+            [class.drag-active]="isProofDragActive"
+            for="proofFileOrder"
+            (dragover)="onProofDragOver($event)"
+            (dragleave)="onProofDragLeave($event)"
+            (drop)="onProofDrop($event)">
+            <span class="proof-dropzone__title">Arrastra y suelta tu comprobante aqui</span>
+            <span class="proof-dropzone__hint">o haz clic para seleccionar archivo</span>
+            <span class="proof-dropzone__file" *ngIf="proofFile">Archivo: {{ proofFile.name }}</span>
+          </label>
+          <input id="proofFileOrder" class="proof-input-hidden" type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="onProofSelected($event)">
+          <button class="btn-upload-proof" [disabled]="!proofFile || proofUploading" (click)="uploadPaymentProof()">
+            {{ proofUploading ? 'Enviando...' : 'Enviar comprobante' }}
+          </button>
+          <p class="proof-link" *ngIf="proofPreviewUrl">
+            <a [href]="proofPreviewUrl" target="_blank" rel="noopener">Ver comprobante cargado</a>
+          </p>
+          <p class="proof-ok" *ngIf="proofSuccess">{{ proofSuccess }}</p>
+          <p class="proof-error" *ngIf="proofError">{{ proofError }}</p>
+        </div>
+      </section>
+
+      <!-- Timeline -->
+      <section class="modal-section" *ngIf="selectedOrder.timeline?.length">
+        <h3>Estado del pedido</h3>
+        <div class="timeline">
+          <div class="timeline-item" *ngFor="let step of selectedOrder.timeline" [class.done]="step.done">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+              <span class="timeline-label">{{ step.label }}</span>
+              <span class="timeline-date" *ngIf="step.date">{{ step.date }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
     </div>
   </div>
