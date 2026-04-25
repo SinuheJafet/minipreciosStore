@@ -66,7 +66,7 @@ export class InventoryAdminService implements OnDestroy {
     };
     this.http.post(`${this.api}/movements`, body).pipe(catchError(() => of(null)))
       .subscribe(() => {
-        // Hub will push InventoryChanged; reload movements list manually
+        this.loadInventory();
         this.loadMovements();
       });
   }

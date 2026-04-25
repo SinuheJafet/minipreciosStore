@@ -23,6 +23,117 @@
 }
 .header-note { font-size: 12px; color: #94a3b8; }
 
+/* ── Alta buttons ── */
+.btn-add {
+  display: flex; align-items: center; gap: 7px; background: #7c3aed; color: white; border: none;
+  padding: 9px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background 0.2s; &:hover { background: #6d28d9; }
+}
+
+/* ── Toggle status button (inside detail panel) ── */
+.btn-toggle-status {
+  display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+  border-radius: 8px; border: 1.5px solid #bbf7d0; background: #f0fdf4;
+  color: #059669; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  &:hover { background: #dcfce7; }
+  &.inactive { border-color: #fca5a5; background: #fef2f2; color: #dc2626;
+    &:hover { background: #fee2e2; } }
+}
+
+/* ── Op buttons for toggle ── */
+::ng-deep .op-toggle-on  { color: #059669 !important; background: #d1fae5 !important; &:hover { background: #059669 !important; color: white !important; } }
+::ng-deep .op-toggle-off { color: #dc2626 !important; background: #fef2f2 !important; &:hover { background: #dc2626 !important; color: white !important; } }
+
+/* ── Modal overlay ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+/* ── Create form modal ── */
+.cust-form-modal {
+  background: white; border-radius: 16px; width: 100%; max-width: 620px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  &__header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px; border-bottom: 1px solid #f1f5f9;
+    h3 { font-size: 16px; font-weight: 700; color: #0f172a; }
+  }
+  &__body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+  &__footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #f1f5f9; }
+}
+.cf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  @media (max-width: 480px) { grid-template-columns: 1fr; }
+}
+.cf-field {
+  display: flex; flex-direction: column; gap: 5px;
+  label { font-size: 12px; font-weight: 600; color: #374151;
+    .req { color: #ef4444; }
+  }
+  input, select {
+    padding: 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 9px;
+    font-size: 13px; color: #0f172a; outline: none; transition: border-color 0.2s;
+    &:focus { border-color: #7c3aed; }
+    &::placeholder { color: #cbd5e1; }
+  }
+}
+.btn-cancel {
+  padding: 9px 18px; border: 1.5px solid #e2e8f0; border-radius: 8px;
+  background: white; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer;
+  &:hover { border-color: #94a3b8; }
+}
+.btn-save {
+  padding: 9px 20px; background: #7c3aed; color: white; border: none;
+  border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  &:hover { background: #6d28d9; } &:disabled { background: #94a3b8; cursor: not-allowed; }
+}
+
+/* ── Form extras ── */
+.cf-section-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;
+  letter-spacing: 0.5px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;
+}
+.cf-pwd-wrap {
+  position: relative;
+  input { padding-right: 38px; }
+}
+.cf-pwd-toggle {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: #94a3b8;
+  display: flex; align-items: center; padding: 2px;
+  &:hover { color: #7c3aed; }
+}
+.cf-error { font-size: 11px; color: #dc2626; margin-top: 3px; }
+input.error { border-color: #fca5a5 !important; }
+
+.cf-save-error {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+  font-size: 12px; color: #dc2626; margin: 0;
+}
+
+.cf-toggle-address {
+  display: flex; align-items: center; gap: 8px; background: #f8fafc;
+  border: 1.5px solid #e2e8f0; border-radius: 9px; padding: 9px 14px;
+  font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; width: 100%;
+  transition: all 0.15s;
+  svg:last-child { margin-left: auto; transition: transform 0.2s; }
+  &:hover { border-color: #7c3aed; color: #7c3aed; background: #f5f3ff; }
+}
+
+/* ── Confirm delete dialog ── */
+.confirm-dialog {
+  background: white; border-radius: 16px; padding: 28px 24px; text-align: center;
+  width: 100%; max-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  .confirm-icon { display: flex; justify-content: center; margin-bottom: 12px; }
+  h3 { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 8px; }
+  p { font-size: 13px; color: #64748b; margin: 0 0 20px; }
+}
+.confirm-actions { display: flex; justify-content: center; gap: 10px; }
+.btn-danger {
+  padding: 9px 20px; background: #dc2626; color: white; border: none;
+  border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  &:hover { background: #b91c1c; }
+}
+
 /* ── Modal overlay ── */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
 

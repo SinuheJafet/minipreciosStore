@@ -8,8 +8,6 @@ import { DashboardSectionComponent } from './components/dashboard-section.compon
 import { PosSectionComponent } from './components/pos-section.component';
 import { OrdersSectionComponent } from './components/orders-section.component';
 import { ProductsSectionComponent } from './components/products-section.component';
-import { InventorySectionComponent } from './components/inventory-section.component';
-import { MovementsSectionComponent } from './components/movements-section.component';
 import { UsersSectionComponent } from './components/users-section.component';
 import { CustomersSectionComponent } from './components/customers-section.component';
 import { BannersSectionComponent } from './components/banners-section.component';
@@ -23,8 +21,6 @@ import { DynamicTableModule } from '../../shared/components/dynamic-table/dynami
     PosSectionComponent,
     OrdersSectionComponent,
     ProductsSectionComponent,
-    InventorySectionComponent,
-    MovementsSectionComponent,
     UsersSectionComponent,
     CustomersSectionComponent,
     BannersSectionComponent,

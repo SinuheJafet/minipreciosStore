@@ -55,9 +55,13 @@ export class UsersSectionComponent implements OnInit {
     { columnDef: 'name', headerName: 'Usuario',
       isHtmlTemplate: true, contentTemplate: (r: AdminUser) =>
         `<div style="display:flex;align-items:center;gap:10px">
-          <div style="width:34px;height:34px;border-radius:50%;background:#ede9fe;color:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${r.name[0].toUpperCase()}</div>
-          <div><span style="display:block;font-weight:600;color:#0f172a;font-size:13px">${r.name}</span><span style="display:block;font-size:11px;color:#94a3b8">${r.email}</span></div>
+          <div><span style="display:block;font-weight:600;color:#0f172a;font-size:13px">${r.name}</span></div>
         </div>` },
+    { columnDef: 'email', headerName: 'Email',
+      isHtmlTemplate: true, contentTemplate: (r: AdminUser) =>
+        `<div style="display:flex;align-items:center;gap:10px">
+          <div><span style="display:block;font-size:11px;color:#94a3b8">${r.email}</span></div>
+        </div>` },        
     { columnDef: 'role', headerName: 'Rol',
       isHtmlTemplate: true, contentTemplate: (r: AdminUser) => {
         const [bg, c] = this.roleColors[r.role] ?? ['#f1f5f9', '#64748b'];
@@ -94,11 +98,16 @@ export class UsersSectionComponent implements OnInit {
   saveUser(): void {
     if (!this.isFormValid) return;
     if (this.isEdit && this.form.id) {
-      this.svc.update(this.form.id, { name: this.form.name, email: this.form.email,
-        role: this.form.role, isActive: this.form.isActive });
+      const patch: Parameters<typeof this.svc.update>[1] = {
+        name: this.form.name, email: this.form.email,
+        role: this.form.role, isActive: this.form.isActive,
+      };
+      if (this.form.password) patch.password = this.form.password;
+      this.svc.update(this.form.id, patch);
     } else {
       this.svc.add({ name: this.form.name, email: this.form.email,
-        role: this.form.role, isActive: this.form.isActive });
+        role: this.form.role, isActive: this.form.isActive,
+        password: this.form.password });
     }
     this.closeModal();
   }

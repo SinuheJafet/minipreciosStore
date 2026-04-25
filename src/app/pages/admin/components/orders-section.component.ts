@@ -4,6 +4,7 @@ import { map } from 'rxjs/operators';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
 import { AdminOrder } from '../../../models/admin.model';
 import { OrdersAdminService } from '../services/orders-admin.service';
+import { InventoryAdminService } from '../services/inventory-admin.service';
 
 type OrderStatus = 'all' | 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -27,7 +28,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
 })
 export class OrdersSectionComponent implements OnInit {
   orders!: Observable<AdminOrder[]>;
-  constructor(private svc: OrdersAdminService) {}
+  constructor(private svc: OrdersAdminService, private invSvc: InventoryAdminService) {}
 
   private statusFilter$ = new BehaviorSubject<OrderStatus>('all');
   filtered$!: Observable<AdminOrder[]>;
@@ -141,6 +142,10 @@ export class OrdersSectionComponent implements OnInit {
     this.svc.updateStatus(this.selectedOrder.id, newStatus as AdminOrder['status'], this.trackingInput || undefined);
     this.selectedOrder = { ...this.selectedOrder, status: newStatus as AdminOrder['status'],
       trackingNumber: this.trackingInput || undefined };
+    // Fallback: si el hub no emite InventoryChanged, recargar inventario manualmente
+    if (newStatus === 'cancelled') {
+      this.invSvc.getInventory().subscribe();
+    }
   }
 
   itemTotal(order: AdminOrder): number {

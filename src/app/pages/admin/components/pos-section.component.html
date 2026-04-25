@@ -49,16 +49,81 @@
         <span class="cart-count" *ngIf="cart.length > 0">{{ cart.length }}</span>
       </div>
 
-      <!-- Customer info -->
-      <div class="pos-customer">
-        <div class="pos-field">
-          <label>Cliente <span class="optional">(opcional)</span></label>
-          <input type="text" [(ngModel)]="customerName" placeholder="Nombre del cliente…">
+      <!-- Customer selector -->
+      <div class="pos-customer-block">
+        <div class="pos-cust-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Cliente <span class="optional">— opcional</span>
         </div>
-        <div class="pos-field">
-          <label>Teléfono <span class="optional">(opcional)</span></label>
-          <input type="text" [(ngModel)]="customerPhone" placeholder="Número de contacto…">
+
+        <!-- Selected customer chip -->
+        <div class="pos-cust-selected" *ngIf="selectedCustomer && !showQuickCreate">
+          <div class="pos-cust-avatar">{{ selectedCustomer.name[0].toUpperCase() }}</div>
+          <div class="pos-cust-info">
+            <span class="pos-cust-name">{{ selectedCustomer.name }}</span>
+            <span class="pos-cust-sub">{{ selectedCustomer.email }}<ng-container *ngIf="selectedCustomer.phone"> · {{ selectedCustomer.phone }}</ng-container></span>
+          </div>
+          <button class="pos-cust-clear" (click)="clearCustomer()" title="Cambiar cliente">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
+
+        <!-- Search autocomplete -->
+        <div class="pos-cust-ac" *ngIf="!selectedCustomer && !showQuickCreate">
+          <div class="pos-cust-ac__wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text"
+                   [(ngModel)]="customerSearch"
+                   (input)="showCustomerDropdown = true"
+                   (focus)="showCustomerDropdown = true"
+                   (blur)="onCustomerBlur()"
+                   placeholder="Buscar por nombre, email o teléfono…"
+                   autocomplete="off">
+          </div>
+
+          <div class="pos-cust-ac__dropdown" *ngIf="showCustomerDropdown">
+            <button class="pos-cust-ac__item" *ngFor="let c of customerResults"
+                    (mousedown)="selectCustomer(c)">
+              <div class="pos-cust-ac__avatar">{{ c.name[0].toUpperCase() }}</div>
+              <div class="pos-cust-ac__data">
+                <span>{{ c.name }}</span>
+                <small>{{ c.email }}<ng-container *ngIf="c.phone"> · {{ c.phone }}</ng-container></small>
+              </div>
+            </button>
+
+            <div class="pos-cust-ac__divider" *ngIf="customerResults.length"></div>
+
+            <button class="pos-cust-ac__new" (mousedown)="openQuickCreate()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Crear nuevo cliente<ng-container *ngIf="customerSearch"> "{{ customerSearch }}"</ng-container>
+            </button>
+
+            <p class="pos-cust-ac__empty" *ngIf="!customerResults.length && !customerSearch">
+              Sin clientes activos aún.
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick create inline -->
+        <div class="pos-quick-create" *ngIf="showQuickCreate">
+          <div class="pqc-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo cliente
+          </div>
+          <input type="text"     [(ngModel)]="newCustName"  placeholder="Nombre completo *" class="pqc-input">
+          <input type="email"    [(ngModel)]="newCustEmail" placeholder="Email *"           class="pqc-input">
+          <input type="tel"      [(ngModel)]="newCustPhone" placeholder="Teléfono"          class="pqc-input">
+          <p class="pqc-hint">Se generará una contraseña temporal que el cliente puede cambiar.</p>
+          <p class="pqc-error" *ngIf="newCustError">{{ newCustError }}</p>
+          <div class="pqc-actions">
+            <button class="pqc-cancel" (click)="cancelQuickCreate()">Cancelar</button>
+            <button class="pqc-save" (click)="saveQuickCreate()"
+                    [disabled]="!newCustName.trim() || !newCustEmail.trim() || newCustSaving">
+              {{ newCustSaving ? 'Creando…' : 'Crear y seleccionar' }}
+            </button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Cart items -->
@@ -76,7 +141,9 @@
           <div class="cart-item__controls">
             <button class="qty-btn" (click)="changeQty(item, -1)">−</button>
             <span class="qty-val">{{ item.qty }}</span>
-            <button class="qty-btn" (click)="changeQty(item, 1)">+</button>
+            <button class="qty-btn" (click)="changeQty(item, 1)"
+                    [disabled]="atMaxQty(item)"
+                    [title]="atMaxQty(item) ? 'Máximo: ' + stockOf(item.productId) + ' uds' : ''">+</button>
           </div>
           <span class="cart-item__price">${{ item.price * item.qty | number:'1.2-2' }}</span>
           <button class="cart-item__remove" (click)="removeFromCart(i)">

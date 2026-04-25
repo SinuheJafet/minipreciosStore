@@ -16,12 +16,12 @@ export class UsersAdminService {
     return this._data.asObservable();
   }
 
-  add(user: Omit<AdminUser, 'id' | 'createdAt' | 'lastLogin'>): void {
+  add(user: Omit<AdminUser, 'id' | 'createdAt' | 'lastLogin'> & { password: string }): void {
     this.http.post<AdminUser>(this.api, user).pipe(catchError(() => of(null)))
       .subscribe(() => this.load());
   }
 
-  update(id: number, patch: Partial<AdminUser>): void {
+  update(id: number, patch: Partial<AdminUser> & { password?: string }): void {
     this.http.put<AdminUser>(`${this.api}/${id}`, patch).pipe(catchError(() => of(null)))
       .subscribe(() => this.load());
   }

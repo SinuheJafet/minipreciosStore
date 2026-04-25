@@ -58,17 +58,7 @@
         <button class="sidebar-nav__item" [class.active]="activeSection==='products'" (click)="navigate('products')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
           <span>Productos</span>
-        </button>
-
-        <button class="sidebar-nav__item" [class.active]="activeSection==='inventory'" (click)="navigate('inventory')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
-          <span>Inventario</span>
           <span class="sidebar-badge sidebar-badge--warn" *ngIf="lowStockCount > 0">{{ lowStockCount }}</span>
-        </button>
-
-        <button class="sidebar-nav__item" [class.active]="activeSection==='movements'" (click)="navigate('movements')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-          <span>Movimientos</span>
         </button>
 
         <div class="sidebar-divider"></div>
@@ -105,9 +95,7 @@
       <admin-pos-section        *ngIf="activeSection==='pos'"></admin-pos-section>
       <admin-orders-section     *ngIf="activeSection==='orders'"></admin-orders-section>
       <admin-products-section   *ngIf="activeSection==='products'"></admin-products-section>
-      <admin-inventory-section  *ngIf="activeSection==='inventory'"></admin-inventory-section>
-      <admin-movements-section  *ngIf="activeSection==='movements'"></admin-movements-section>
-      <admin-users-section      *ngIf="activeSection==='users'"></admin-users-section>
+<admin-users-section      *ngIf="activeSection==='users'"></admin-users-section>
       <admin-customers-section  *ngIf="activeSection==='customers'"></admin-customers-section>
       <admin-banners-section    *ngIf="activeSection==='banners'"></admin-banners-section>
       <admin-payment-accounts-section *ngIf="activeSection==='payment-accounts'"></admin-payment-accounts-section>

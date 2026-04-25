@@ -45,6 +45,7 @@ export class DynamicTableComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @Input('checkable') checkable: boolean = false;
   @Input('rowIdKey') rowIdKey: string = 'id';
+  @Input('checkVisibleCondition') checkVisibleCondition: ((row: any) => boolean) | null = null;
 
   @Output() onSelectItem: EventEmitter<any> = new EventEmitter<any>();
   @Output() addItem: EventEmitter<any> = new EventEmitter<any>();
@@ -192,15 +193,24 @@ export class DynamicTableComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ── Checkbox support ─────────────────────────────────────────────────────
+  canShowCheck(row: any): boolean {
+    return this.checkVisibleCondition ? !!this.checkVisibleCondition(row) : true;
+  }
+
+  private get checkableRows(): any[] {
+    return this.dataSource.data.filter(r => this.canShowCheck(r));
+  }
+
   get allChecked(): boolean {
-    return this.dataSource.data.length > 0
-      && this.dataSource.data.every(r => this.checkedSet.has(r[this.rowIdKey]));
+    return this.checkableRows.length > 0
+      && this.checkableRows.every(r => this.checkedSet.has(r[this.rowIdKey]));
   }
 
   isChecked(row: any): boolean { return this.checkedSet.has(row[this.rowIdKey]); }
 
   toggleCheck(row: any, event: Event): void {
     event.stopPropagation();
+    if (!this.canShowCheck(row)) return;
     const id = row[this.rowIdKey];
     this.checkedSet.has(id) ? this.checkedSet.delete(id) : this.checkedSet.add(id);
     this.checkedSet = new Set(this.checkedSet);
@@ -209,13 +219,14 @@ export class DynamicTableComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleCheckAll(): void {
     if (this.allChecked) {
-      this.checkedSet = new Set();
+      this.checkableRows.forEach(r => this.checkedSet.delete(r[this.rowIdKey]));
     } else {
-      this.checkedSet = new Set(this.dataSource.data.map(r => r[this.rowIdKey]));
+      this.checkedSet = new Set([
+        ...Array.from(this.checkedSet),
+        ...this.checkableRows.map(r => r[this.rowIdKey]),
+      ]);
     }
-    this.checkedChange.emit(this.allChecked
-      ? this.dataSource.data.filter(r => this.checkedSet.has(r[this.rowIdKey]))
-      : []);
+    this.checkedChange.emit(this.dataSource.data.filter(r => this.checkedSet.has(r[this.rowIdKey])));
   }
 
   clearChecked(): void { this.checkedSet = new Set(); this.checkedChange.emit([]); }

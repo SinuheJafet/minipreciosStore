@@ -9,13 +9,25 @@ import { RealtimeService } from '../../../services/realtime.service';
 interface OrderStatusEvent { id: string; status: string; trackingNumber?: string; }
 
 interface BackendOrderItem { productName: string; productSku: string; price: number; quantity: number; }
+
+// El backend puede usar dos convenciones según si el DTO aplica mapeo explícito
+// (customerName/customerEmail) o serializa directamente los campos de la entidad
+// (shipFullName/shipEmail/shipPhone). Se aceptan ambas.
 interface BackendOrder {
-  id: number; customerName: string; customerEmail: string; subtotal: number;
-  discount: number; shipping: number; total: number; status: string;
-  createdAt: string; address: string; city: string; country: string;
-  paymentMethod: string; trackingNumber?: string;
-  paymentProofUrl?: string;
-  paymentProofStatus?: string;
+  id: number;
+  customerName?: string;  shipFullName?: string;
+  customerEmail?: string; shipEmail?: string;
+  customerPhone?: string; shipPhone?: string;
+  notes?: string;
+  subtotal: number; discount: number; shipping: number; total: number;
+  status: string; createdAt: string; paymentMethod: string;
+  address?: string;  shipAddress?: string;
+  city?: string;     shipCity?: string;
+  state?: string;    shipState?: string;
+  country?: string;  shipCountry?: string;
+  zipCode?: string;  shipZip?: string;
+  trackingNumber?: string;
+  paymentProofUrl?: string; paymentProofStatus?: string;
   items?: BackendOrderItem[];
   timeline?: { label: string; date: string; done: boolean }[];
 }
@@ -24,20 +36,25 @@ interface LocalPaymentProof { url: string; status: string; }
 
 function mapOrder(o: BackendOrder): AdminOrder {
   return {
-    id: o.id.toString(),
-    customerName: o.customerName, customerEmail: o.customerEmail,
-    items: (o.items || []).map(i => ({
+    id:            o.id.toString(),
+    customerName:  o.customerName  ?? o.shipFullName  ?? '',
+    customerEmail: o.customerEmail ?? o.shipEmail     ?? '',
+    customerPhone: o.customerPhone ?? o.shipPhone     ?? undefined,
+    notes:         o.notes,
+    items: (o.items ?? []).map(i => ({
       name: i.productName, qty: i.quantity, price: i.price, image: '', sku: i.productSku,
     })),
     subtotal: o.subtotal, discount: o.discount, shipping: o.shipping, total: o.total,
-    status: o.status as AdminOrder['status'],
-    createdAt: o.createdAt?.slice(0, 10) ?? '',
-    address: o.address ?? '', city: o.city ?? '', country: o.country ?? '',
+    status:        o.status as AdminOrder['status'],
+    createdAt:     o.createdAt?.slice(0, 10) ?? '',
+    address:       o.address  ?? o.shipAddress ?? '',
+    city:          o.city     ?? o.shipCity    ?? '',
+    country:       o.country  ?? o.shipCountry ?? '',
     paymentMethod: o.paymentMethod ?? '',
-    trackingNumber: o.trackingNumber,
-    paymentProofUrl: o.paymentProofUrl,
+    trackingNumber:     o.trackingNumber,
+    paymentProofUrl:    o.paymentProofUrl,
     paymentProofStatus: o.paymentProofStatus,
-    timeline: (o.timeline || []).map(t => ({ date: t.date, label: t.label, done: t.done })),
+    timeline: (o.timeline ?? []).map(t => ({ date: t.date, label: t.label, done: t.done })),
   };
 }
 
@@ -131,7 +148,6 @@ export class OrdersAdminService implements OnDestroy {
   }
 
   updateStatus(id: string, status: AdminOrder['status'], trackingNumber?: string): void {
-    // Hub will push OrderStatusChanged → no manual reload needed
     this.http.patch(`${this.api}/${id}/status`, { status, trackingNumber }).pipe(catchError(() => of(null)))
       .subscribe(res => { if (res === null) this.load(); });
   }

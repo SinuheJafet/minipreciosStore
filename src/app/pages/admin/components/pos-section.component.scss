@@ -83,7 +83,34 @@
 
 .cart-count { margin-left: auto; background: #7c3aed; color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
 
-/* Customer fields */
+/* ── Customer selector block ── */
+.pos-customer-block { padding: 10px 14px; border-bottom: 1px solid #f8fafc; display: flex; flex-direction: column; gap: 8px; }
+.pos-cust-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #64748b; .optional { font-weight: 400; color: #94a3b8; } }
+.pos-cust-selected { display: flex; align-items: center; gap: 10px; background: #f5f3ff; border: 1.5px solid #ddd6fe; border-radius: 10px; padding: 8px 12px; }
+.pos-cust-avatar { width: 30px; height: 30px; border-radius: 50%; background: #7c3aed; color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.pos-cust-info { flex: 1; min-width: 0; }
+.pos-cust-name { display: block; font-size: 13px; font-weight: 600; color: #0f172a; }
+.pos-cust-sub  { display: block; font-size: 11px; color: #7c3aed; }
+.pos-cust-clear { background: none; border: none; cursor: pointer; color: #94a3b8; padding: 2px; display: flex; align-items: center; &:hover { color: #dc2626; } }
+.pos-cust-ac { position: relative; }
+.pos-cust-ac__wrap { display: flex; align-items: center; gap: 7px; border: 1.5px solid #e2e8f0; border-radius: 9px; padding: 0 10px; background: white; transition: border-color 0.2s; svg { color: #94a3b8; flex-shrink: 0; } &:focus-within { border-color: #7c3aed; } input { flex: 1; border: none; outline: none; padding: 8px 0; font-size: 12px; color: #0f172a; background: transparent; &::placeholder { color: #cbd5e1; } } }
+.pos-cust-ac__dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50; background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-height: 240px; overflow-y: auto; }
+.pos-cust-ac__item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: none; background: transparent; cursor: pointer; text-align: left; &:hover { background: #f5f3ff; } &:not(:last-child) { border-bottom: 1px solid #f8fafc; } }
+.pos-cust-ac__avatar { width: 28px; height: 28px; border-radius: 50%; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.pos-cust-ac__data { display: flex; flex-direction: column; gap: 1px; span { font-size: 12px; font-weight: 600; color: #0f172a; } small { font-size: 10px; color: #94a3b8; } }
+.pos-cust-ac__divider { height: 1px; background: #f1f5f9; margin: 2px 0; }
+.pos-cust-ac__new { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border: none; background: transparent; cursor: pointer; text-align: left; font-size: 12px; font-weight: 600; color: #7c3aed; &:hover { background: #f5f3ff; } }
+.pos-cust-ac__empty { padding: 10px 12px; font-size: 12px; color: #94a3b8; margin: 0; }
+.pos-quick-create { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pqc-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #7c3aed; }
+.pqc-input { width: 100%; padding: 7px 10px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 12px; color: #0f172a; outline: none; background: white; box-sizing: border-box; &:focus { border-color: #7c3aed; } &::placeholder { color: #cbd5e1; } }
+.pqc-hint  { font-size: 11px; color: #94a3b8; margin: 0; }
+.pqc-error { font-size: 11px; color: #dc2626; margin: 0; }
+.pqc-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.pqc-cancel { padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 7px; background: white; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; }
+.pqc-save { padding: 6px 14px; background: #7c3aed; color: white; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; &:disabled { background: #94a3b8; cursor: not-allowed; } &:hover:not(:disabled) { background: #6d28d9; } }
+
+/* Legacy */
 .pos-customer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #f8fafc; }
 .pos-field {
   label { display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 3px; }

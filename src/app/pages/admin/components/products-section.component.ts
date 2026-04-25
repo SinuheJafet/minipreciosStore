@@ -1,9 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import { Observable, of, switchMap } from 'rxjs';
+import { BehaviorSubject, Observable, combineLatest, of, switchMap } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { jsPDF } from 'jspdf';
 import { Product } from '../../../models/product.model';
+import { InventoryMovement, MOVEMENT_CONCEPTS } from '../../../models/admin.model';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
 import { ProductsAdminService } from '../services/products-admin.service';
+import { InventoryAdminService } from '../services/inventory-admin.service';
 import { ProductService } from '../../../services/product.service';
 
 interface CompetitorPriceForm {
@@ -34,15 +37,80 @@ const EMPTY_FORM = (): ProductForm => ({
   styleUrls: ['./products-section.component.scss'],
 })
 export class ProductsSectionComponent implements OnInit {
-  products!: Observable<Product[]>;
+  /* ── Observables principales ── */
+  filtered$!: Observable<Product[]>;
+  movements!: Observable<InventoryMovement[]>;
+
+  private stockFilter$ = new BehaviorSubject<'all' | 'low' | 'out'>('all');
+  activeStockFilter: 'all' | 'low' | 'out' = 'all';
+  allProducts: Product[] = [];
+  allMovements: InventoryMovement[] = [];
+
+  /* ── Tabs ── */
+  activeTab: 'catalog' | 'movements' = 'catalog';
+
+  /* ── Modal movimiento ── */
+  showMovModal = false;
+  movProductId: number | null = null;
+  movProductSearch = '';
+  showMovDropdown = false;
+  movType: 'entrada' | 'salida' | 'ajuste' = 'entrada';
+  movConcept = '';
+  movQty = 1;
+  movNotes = '';
+  movLotCode = '';
+  concepts: string[] = MOVEMENT_CONCEPTS.entrada;
+
+  get movProductResults(): Product[] {
+    const q = this.movProductSearch.toLowerCase().trim();
+    const list = q
+      ? this.allProducts.filter(p =>
+          p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
+      : this.allProducts;
+    return list.slice(0, 10);
+  }
+  readonly movTypes = [
+    { key: 'entrada' as const, label: 'Entrada', icon: '↑' },
+    { key: 'salida'  as const, label: 'Salida',  icon: '↓' },
+    { key: 'ajuste'  as const, label: 'Ajuste',  icon: '⇄' },
+  ];
+
+  /* ── Modal historial por producto ── */
+  showHistoryModal = false;
+  historyProduct: Product | null = null;
+  get historyMovements(): InventoryMovement[] {
+    return this.historyProduct
+      ? this.allMovements.filter(m => m.productId === this.historyProduct!.id)
+      : [];
+  }
 
   constructor(
     private svc: ProductsAdminService,
-    private productService: ProductService
+    private invSvc: InventoryAdminService,
+    private productService: ProductService,
   ) {}
 
   ngOnInit(): void {
-    this.products = this.svc.getProducts();
+    // Merge products + live inventory stock (real-time via BehaviorSubjects de ambos servicios)
+    const merged$ = combineLatest([this.svc.getProducts(), this.invSvc.getInventory()]).pipe(
+      map(([prods, inv]) => {
+        const stockMap = new Map(inv.map(p => [p.id, p.stock]));
+        return prods.map(p => ({ ...p, stock: stockMap.has(p.id) ? stockMap.get(p.id)! : p.stock }));
+      })
+    );
+    merged$.subscribe(p => this.allProducts = p);
+
+    this.filtered$ = combineLatest([merged$, this.stockFilter$]).pipe(
+      map(([prods, f]) => {
+        if (f === 'low') return prods.filter(p => p.stock > 0 && p.stock <= 5);
+        if (f === 'out') return prods.filter(p => p.stock === 0);
+        return prods;
+      })
+    );
+
+    this.movements = this.invSvc.getMovements();
+    this.movements.subscribe(m => this.allMovements = m);
+
     this.loadCategories();
   }
 
@@ -56,6 +124,7 @@ export class ProductsSectionComponent implements OnInit {
   sharingProduct: Product | null = null;
   shareCopied     = false;
   isGenerating    = false;
+  shareMode: 'image' | 'pdf' = 'image';
   discountPercentInput: number | null = null;
 
   selectedProducts: Product[] = [];
@@ -88,11 +157,105 @@ export class ProductsSectionComponent implements OnInit {
       isHtmlTemplate: true, contentTemplate: (r: Product) =>
         r.badge ? `<span class="dt-badge dt-badge--${r.badge}">${r.badge}</span>` : `<span class="dt-badge dt-badge--none">—</span>` },
     { columnDef: 'ops', headerName: '', operations: [
-        { icon: 'share',  toolTip: 'Compartir', color: 'op-view',   action: (r: Product) => this.openShare(r) },
-        { icon: 'edit',   toolTip: 'Editar',    color: 'op-edit',   action: (r: Product) => this.openEdit(r) },
-        { icon: 'delete', toolTip: 'Eliminar',  color: 'op-delete', action: (r: Product) => this.confirmDelete(r) },
+        { icon: 'share',   toolTip: 'Compartir',         color: 'op-view',   action: (r: Product) => this.openShare(r) },
+        { icon: 'swap_vert', toolTip: 'Registrar movimiento', color: 'op-mov', action: (r: Product) => this.openMovement(r) },
+        { icon: 'history', toolTip: 'Historial de stock', color: 'op-hist',  action: (r: Product) => this.openHistory(r) },
+        { icon: 'edit',    toolTip: 'Editar',             color: 'op-edit',   action: (r: Product) => this.openEdit(r) },
+        { icon: 'delete',  toolTip: 'Eliminar',           color: 'op-delete', action: (r: Product) => this.confirmDelete(r) },
       ]},
   ];
+
+  readonly movColumns: ColumnSource[] = [
+    { columnDef: 'createdAt', headerName: 'Fecha',
+      cell: (r: InventoryMovement) => r.createdAt.substring(0, 10) },
+    { columnDef: 'productName', headerName: 'Producto',
+      isHtmlTemplate: true, contentTemplate: (r: InventoryMovement) =>
+        `<span style="display:block;font-weight:600;color:#0f172a;font-size:13px">${r.productName}</span>
+         <span style="font-family:monospace;font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;color:#475569">${r.productSku}</span>` },
+    { columnDef: 'type', headerName: 'Tipo',
+      isHtmlTemplate: true, contentTemplate: (r: InventoryMovement) => {
+        const cfg: Record<string,[string,string,string]> = {
+          entrada: ['#d1fae5','#059669','↑ Entrada'],
+          salida:  ['#fef2f2','#dc2626','↓ Salida'],
+          ajuste:  ['#dbeafe','#2563eb','⇄ Ajuste'],
+        };
+        const [bg, c, lbl] = cfg[r.type] ?? ['#f1f5f9','#64748b', r.type];
+        return `<span style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:${bg};color:${c}">${lbl}</span>`;
+      }},
+    { columnDef: 'concept',  headerName: 'Concepto', cell: (r: InventoryMovement) => r.concept },
+    { columnDef: 'quantity', headerName: 'Cantidad',
+      isHtmlTemplate: true, contentTemplate: (r: InventoryMovement) =>
+        `<span style="font-weight:700;color:#0f172a">${r.type === 'entrada' ? '+' : r.type === 'salida' ? '-' : ''}${r.quantity}</span>` },
+    { columnDef: 'previousStock', headerName: 'Ant.',
+      isHtmlTemplate: true, contentTemplate: (r: InventoryMovement) =>
+        `<span style="color:#94a3b8;font-size:12px">${r.previousStock}</span>` },
+    { columnDef: 'newStock', headerName: 'Nuevo',
+      isHtmlTemplate: true, contentTemplate: (r: InventoryMovement) =>
+        `<span style="font-weight:600;color:#0f172a;font-size:12px">${r.newStock}</span>` },
+    { columnDef: 'createdBy', headerName: 'Por', cell: (r: InventoryMovement) => r.createdBy },
+    { columnDef: 'notes', headerName: 'Notas', cell: (r: InventoryMovement) => r.notes || '—' },
+  ];
+
+  /* ── Stock filters ── */
+  setStockFilter(f: 'all' | 'low' | 'out'): void {
+    this.activeStockFilter = f;
+    this.stockFilter$.next(f);
+  }
+  stockCount(f: 'all' | 'low' | 'out'): number {
+    if (f === 'all') return this.allProducts.length;
+    if (f === 'low') return this.allProducts.filter(p => p.stock > 0 && p.stock <= 5).length;
+    return this.allProducts.filter(p => p.stock === 0).length;
+  }
+
+  /* ── Movimiento por producto ── */
+  openMovement(p?: Product): void {
+    this.movProductId = p?.id ?? null;
+    this.movProductSearch = p ? `${p.name}  ·  ${p.sku}` : '';
+    this.showMovDropdown = false;
+    this.movType = 'entrada';
+    this.onMovTypeChange();
+    this.movQty = 1; this.movNotes = ''; this.movLotCode = '';
+    this.showMovModal = true;
+  }
+  closeMovement(): void {
+    this.showMovModal = false;
+    this.movProductId = null; this.movProductSearch = ''; this.showMovDropdown = false;
+    this.movConcept = ''; this.movQty = 1; this.movNotes = ''; this.movLotCode = '';
+  }
+  selectMovProduct(p: Product): void {
+    this.movProductId = p.id;
+    this.movProductSearch = `${p.name}  ·  ${p.sku}`;
+    this.showMovDropdown = false;
+  }
+  onMovSearchBlur(): void {
+    // Pequeño delay para que el mousedown del item dispare antes de cerrar
+    setTimeout(() => { this.showMovDropdown = false; }, 150);
+  }
+  onMovTypeChange(): void {
+    this.concepts = MOVEMENT_CONCEPTS[this.movType];
+    this.movConcept = '';
+  }
+  saveMovement(): void {
+    if (!this.movProductId || !this.movConcept) return;
+    const product = this.allProducts.find(p => p.id === this.movProductId);
+    if (!product) return;
+    const prev = product.stock;
+    const newStock = this.movType === 'entrada' ? prev + this.movQty
+                   : this.movType === 'salida'  ? Math.max(0, prev - this.movQty)
+                   : this.movQty;
+    this.invSvc.addMovement({
+      productId: product.id, productName: product.name, productSku: product.sku,
+      type: this.movType, concept: this.movConcept, quantity: this.movQty,
+      notes: this.movNotes, previousStock: prev, newStock,
+      createdBy: 'Admin', createdAt: new Date().toISOString(),
+      ...(this.movLotCode ? { lotCode: this.movLotCode } : {}),
+    });
+    this.closeMovement();
+  }
+
+  /* ── Historial por producto ── */
+  openHistory(p: Product): void { this.historyProduct = p; this.showHistoryModal = true; }
+  closeHistory(): void { this.showHistoryModal = false; this.historyProduct = null; }
 
   /* ── CRUD ── */
   openCreate(): void {
@@ -166,6 +329,8 @@ export class ProductsSectionComponent implements OnInit {
     this.applyDiscountToCurrentPrice();
   }
 
+  canCheckProduct = (p: Product): boolean => p.stock > 0;
+
   onOriginalPriceChange(): void {
     if (this.discountPercentInput !== null && this.discountPercentInput > 0) {
       this.applyDiscountToCurrentPrice();
@@ -179,7 +344,10 @@ export class ProductsSectionComponent implements OnInit {
   }
 
   /* ── Selection ── */
-  onChecked(rows: Product[]): void { this.selectedProducts = rows; }
+  onChecked(rows: Product[]): void {
+    // Compartir masivo: nunca incluir productos agotados.
+    this.selectedProducts = rows.filter(p => p.stock > 0);
+  }
 
   /* ── Share modal ── */
   openShare(p: Product): void {
@@ -187,6 +355,7 @@ export class ProductsSectionComponent implements OnInit {
     this.showShareModal = true;
     this.shareCopied    = false;
     this.isGenerating   = false;
+    this.shareMode      = 'image';
   }
   closeShare(): void { this.showShareModal = false; this.sharingProduct = null; }
 
@@ -217,43 +386,66 @@ export class ProductsSectionComponent implements OnInit {
     });
   }
 
-  /* ── Download PDF (single product) ── */
-  async downloadSinglePDF(): Promise<void> {
+  /* ── Single product: Descargar (imagen o PDF según shareMode) ── */
+  async downloadSingle(): Promise<void> {
     if (!this.sharingProduct || this.isGenerating) return;
     this.isGenerating = true;
     try {
-      const blob = await this.buildPDF([this.sharingProduct]);
-      this.triggerDownload(blob, `${this.safeName(this.sharingProduct.name)}-miniprecios.pdf`);
+      const name = this.safeName(this.sharingProduct.name);
+      if (this.shareMode === 'image') {
+        const blob = await this.buildImage(this.sharingProduct);
+        this.triggerDownload(blob, `${name}-miniprecios.png`);
+      } else {
+        const blob = await this.buildPDF([this.sharingProduct]);
+        this.triggerDownload(blob, `${name}-miniprecios.pdf`);
+      }
     } finally { this.isGenerating = false; }
   }
 
-  /* ── Share via WhatsApp / Web Share API (single) ── */
+  /* ── Single product: Compartir WhatsApp (imagen o PDF según shareMode) ── */
   async shareWhatsApp(): Promise<void> {
     if (!this.sharingProduct || this.isGenerating) return;
     this.isGenerating = true;
     try {
-      const blob = await this.buildPDF([this.sharingProduct]);
-      await this.shareOrDownload(blob, `${this.safeName(this.sharingProduct.name)}-miniprecios.pdf`);
+      const name = this.safeName(this.sharingProduct.name);
+      if (this.shareMode === 'image') {
+        const blob = await this.buildImage(this.sharingProduct);
+        await this.shareOrDownload(blob, `${name}-miniprecios.png`);
+      } else {
+        const blob = await this.buildPDF([this.sharingProduct]);
+        await this.shareOrDownload(blob, `${name}-miniprecios.pdf`);
+      }
     } finally { this.isGenerating = false; }
+  }
+
+  /* ── Construir imagen PNG (canvas → Blob) ── */
+  private async buildImage(product: Product): Promise<Blob> {
+    const img = product.images[0] ? await this.loadImage(product.images[0]) : null;
+    const canvas = this.renderCanvas(product, img);
+    return new Promise<Blob>(resolve => {
+      canvas.toBlob(blob => resolve(blob!), 'image/png', 0.96);
+    });
   }
 
   /* ── Download PDF (bulk) ── */
   async downloadBulkPDF(): Promise<void> {
-    if (!this.selectedProducts.length || this.isGenerating) return;
+    const selected = this.selectedProducts.filter(p => p.stock > 0);
+    if (!selected.length || this.isGenerating) return;
     this.isGenerating = true;
     try {
-      const blob = await this.buildPDF(this.selectedProducts);
-      this.triggerDownload(blob, `productos-miniprecios-${this.selectedProducts.length}.pdf`);
+      const blob = await this.buildPDF(selected);
+      this.triggerDownload(blob, `productos-miniprecios-${selected.length}.pdf`);
     } finally { this.isGenerating = false; }
   }
 
   /* ── Share via WhatsApp / Web Share API (bulk) ── */
   async shareBulkWhatsApp(): Promise<void> {
-    if (!this.selectedProducts.length || this.isGenerating) return;
+    const selected = this.selectedProducts.filter(p => p.stock > 0);
+    if (!selected.length || this.isGenerating) return;
     this.isGenerating = true;
     try {
-      const blob = await this.buildPDF(this.selectedProducts);
-      await this.shareOrDownload(blob, `productos-miniprecios-${this.selectedProducts.length}.pdf`);
+      const blob = await this.buildPDF(selected);
+      await this.shareOrDownload(blob, `productos-miniprecios-${selected.length}.pdf`);
     } finally { this.isGenerating = false; }
   }
 
@@ -269,10 +461,12 @@ export class ProductsSectionComponent implements OnInit {
       const wMM     = canvas.width  * PX2MM;
       const hMM     = canvas.height * PX2MM;
 
+      // Orientación dinámica según dimensiones del canvas (portrait si alto > ancho)
+      const orient = hMM > wMM ? 'p' : 'l';
       if (!pdf) {
-        pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: [wMM, hMM] });
+        pdf = new jsPDF({ orientation: orient, unit: 'mm', format: [wMM, hMM] });
       } else {
-        pdf.addPage([wMM, hMM]);
+        pdf.addPage([wMM, hMM], orient);
       }
       pdf.addImage(dataUrl, 'JPEG', 0, 0, wMM, hMM);
     }
@@ -299,15 +493,22 @@ export class ProductsSectionComponent implements OnInit {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /* ── Canvas renderer ── */
+  /* ── Canvas renderer — diseño vertical portrait que coincide con el card del modal ── */
   private renderCanvas(p: Product, productImg: HTMLImageElement | null): HTMLCanvasElement {
-    const cpCount  = p.competitorPrices?.length ?? 0;
-    const W        = 800;
-    const IMG_W    = 240;
-    const HDR_H    = 50;
-    const FTR_H    = 36;
-    const contentH = Math.max(260, 168 + (p.description ? 18 : 0) + cpCount * 42 + (cpCount ? 28 : 0));
-    const H        = HDR_H + contentH + FTR_H;
+    const cpCount = p.competitorPrices?.length ?? 0;
+    const W       = 800;
+    const HDR_H   = 54;
+    const IMG_H   = 380;   // siempre reservar espacio (imagen o placeholder)
+    const FTR_H   = 42;
+    const PAD     = 30;
+    // textH debe coincidir EXACTAMENTE con los cy+= del dibujo:
+    // PAD(top) + brand(26) + name(40) + price(58) + divider(20)
+    // + competitors: title(16) + rows(46 c/u)
+    // + PAD(bottom)
+    const textH   = PAD + 26 + 40 + 58 + 20
+                  + (cpCount > 0 ? 16 + cpCount * 46 : 0)
+                  + PAD;
+    const H = HDR_H + IMG_H + textH + FTR_H;
 
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
@@ -317,138 +518,129 @@ export class ProductsSectionComponent implements OnInit {
       if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
     };
 
-    /* BG */
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, W, H);
+    /* ── Fondo blanco ── */
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
-    /* Header */
-    ctx.fillStyle = '#7c3aed';
-    ctx.fillRect(0, 0, W, HDR_H);
+    /* ── Header bar (purple) ── */
+    ctx.fillStyle = '#7c3aed'; ctx.fillRect(0, 0, W, HDR_H);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px system-ui,sans-serif';
-    ctx.fillText('⚡ miniprecios', 22, 33);
-
+    ctx.font = 'bold 16px system-ui,sans-serif';
+    ctx.fillText('⚡ miniprecios', 24, HDR_H / 2 + 7);
     if (p.badge) {
-      ctx.font = 'bold 11px system-ui,sans-serif';
       const bs = p.badge.toUpperCase();
+      ctx.font = 'bold 11px system-ui,sans-serif';
       const bw = ctx.measureText(bs).width + 18;
       ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.beginPath(); rr(W - 22 - bw, 13, bw, 24, 5); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(bs, W - 22 - bw + 9, 30);
+      ctx.beginPath(); rr(W - 24 - bw, 14, bw, 24, 5); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(bs, W - 24 - bw + 9, 31);
     }
 
-    /* Image column */
+    /* ── Imagen del producto (contain — se ve completa, sin recorte ni degradado) ── */
     if (productImg) {
-      ctx.save();
-      ctx.beginPath(); ctx.rect(0, HDR_H, IMG_W, contentH); ctx.clip();
-      const scale = Math.max(IMG_W / productImg.width, contentH / productImg.height);
-      const dw = productImg.width * scale, dh = productImg.height * scale;
-      ctx.drawImage(productImg, (IMG_W - dw) / 2, HDR_H + (contentH - dh) / 2, dw, dh);
-      const grad = ctx.createLinearGradient(IMG_W - 30, 0, IMG_W, 0);
-      grad.addColorStop(0, 'rgba(255,255,255,0)');
-      grad.addColorStop(1, 'rgba(255,255,255,1)');
-      ctx.fillStyle = grad; ctx.fillRect(IMG_W - 30, HDR_H, 30, contentH);
-      ctx.restore();
+      // Fondo neutro para las áreas sin imagen (letterbox)
+      ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, HDR_H, W, IMG_H);
+      const iw = productImg.naturalWidth  || productImg.width  || 1;
+      const ih = productImg.naturalHeight || productImg.height || 1;
+      // contain: escalar para que QUEPA completa dentro del área
+      const scale = Math.min(W / iw, IMG_H / ih);
+      const dw = iw * scale, dh = ih * scale;
+      const dx = (W - dw) / 2;
+      const dy = HDR_H + (IMG_H - dh) / 2;
+      ctx.drawImage(productImg, dx, dy, dw, dh);
     } else {
-      ctx.fillStyle = '#f3f0ff'; ctx.fillRect(0, HDR_H, IMG_W, contentH);
-      ctx.fillStyle = '#c4b5fd'; ctx.font = '56px system-ui,sans-serif';
+      // Placeholder con gradiente
+      const pg = ctx.createLinearGradient(0, HDR_H, 0, HDR_H + IMG_H);
+      pg.addColorStop(0, '#f5f3ff'); pg.addColorStop(1, '#ede9fe');
+      ctx.fillStyle = pg; ctx.fillRect(0, HDR_H, W, IMG_H);
+      ctx.fillStyle = '#c4b5fd'; ctx.font = '80px system-ui,sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('📦', IMG_W / 2, HDR_H + contentH / 2 + 20);
+      ctx.fillText('📦', W / 2, HDR_H + IMG_H / 2 + 28);
       ctx.textAlign = 'left';
     }
 
-    /* Separator */
-    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(IMG_W, HDR_H); ctx.lineTo(IMG_W, HDR_H + contentH); ctx.stroke();
+    /* ── Contenido de texto ── */
+    const px = 32;
+    const rw = W - px * 2;
+    let cy = HDR_H + IMG_H + PAD;
 
-    /* Right content */
-    const rx = IMG_W + 24;
-    const rw = W - rx - 22;
-    let ry   = HDR_H + 26;
-
-    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 20px system-ui,sans-serif';
-    ctx.fillText(p.name.length > 46 ? p.name.slice(0, 46) + '…' : p.name, rx, ry); ry += 26;
-
+    // Marca · Volumen
     ctx.fillStyle = '#64748b'; ctx.font = '13px system-ui,sans-serif';
-    ctx.fillText(`${p.brand}${p.volume ? ' · ' + p.volume : ''}`, rx, ry); ry += 18;
+    ctx.fillText(`${p.brand}${p.volume ? '  ·  ' + p.volume : ''}`, px, cy); cy += 26;
 
-    if (p.description) {
-      ctx.fillStyle = '#94a3b8'; ctx.font = '11px system-ui,sans-serif';
-      ctx.fillText(p.description.length > 86 ? p.description.slice(0, 86) + '…' : p.description, rx, ry);
-      ry += 18;
-    }
-    ry += 8;
+    // Nombre del producto
+    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 26px system-ui,sans-serif';
+    let nameText = p.name;
+    while (ctx.measureText(nameText).width > rw && nameText.length > 5)
+      nameText = nameText.slice(0, -1);
+    if (nameText !== p.name) nameText += '…';
+    ctx.fillText(nameText, px, cy); cy += 40;
 
-    ctx.fillStyle = '#94a3b8'; ctx.font = 'bold 10px system-ui,sans-serif';
-    ctx.fillText('NUESTRO PRECIO', rx, ry); ry += 14;
-
-    ctx.fillStyle = '#7c3aed'; ctx.font = 'bold 34px system-ui,sans-serif';
-    const mainP = `$${p.price.toFixed(2)}`;
-    ctx.fillText(mainP, rx, ry + 28);
-
+    // Precio principal
+    const priceStr = `$${p.price.toFixed(2)}`;
+    ctx.fillStyle = '#7c3aed'; ctx.font = 'bold 36px system-ui,sans-serif';
+    ctx.fillText(priceStr, px, cy + 28);
     if (p.originalPrice) {
-      const ox = rx + ctx.measureText(mainP).width + 12;
-      ctx.fillStyle = '#94a3b8'; ctx.font = '16px system-ui,sans-serif';
-      const orig = `$${p.originalPrice.toFixed(2)}`;
-      ctx.fillText(orig, ox, ry + 26);
-      const ow = ctx.measureText(orig).width;
+      const origStr = `$${p.originalPrice.toFixed(2)}`;
+      const ox = px + ctx.measureText(priceStr).width + 14;
+      ctx.fillStyle = '#94a3b8'; ctx.font = '17px system-ui,sans-serif';
+      ctx.fillText(origStr, ox, cy + 24);
+      const ow = ctx.measureText(origStr).width;
       ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
-      ctx.moveTo(ox, ry + 19); ctx.lineTo(ox + ow, ry + 19); ctx.stroke();
-      ctx.font = 'bold 11px system-ui,sans-serif';
+      ctx.moveTo(ox, cy + 16); ctx.lineTo(ox + ow, cy + 16); ctx.stroke();
       const pct = `-${this.discountPct(p)}%`;
-      const pw = ctx.measureText(pct).width + 12;
+      ctx.font = 'bold 11px system-ui,sans-serif';
+      const pw = ctx.measureText(pct).width + 14;
       ctx.fillStyle = '#d1fae5';
-      ctx.beginPath(); rr(ox + ow + 8, ry + 10, pw, 18, 4); ctx.fill();
-      ctx.fillStyle = '#059669'; ctx.fillText(pct, ox + ow + 14, ry + 23);
+      ctx.beginPath(); rr(ox + ow + 10, cy + 10, pw, 20, 5); ctx.fill();
+      ctx.fillStyle = '#059669'; ctx.fillText(pct, ox + ow + 17, cy + 24);
     }
-    ry += 52;
+    cy += 58;
 
+    // Divisor
     ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(W - 22, ry); ctx.stroke();
-    ry += 14;
+    ctx.beginPath(); ctx.moveTo(px, cy); ctx.lineTo(W - px, cy); ctx.stroke();
+    cy += 20;
 
+    // Precios de competidores
     if (cpCount > 0) {
       ctx.fillStyle = '#94a3b8'; ctx.font = 'bold 10px system-ui,sans-serif';
-      ctx.fillText('COMPARATIVA DE PRECIOS', rx, ry); ry += 12;
-
+      ctx.fillText('COMPARATIVA DE PRECIOS', px, cy); cy += 16;
       p.competitorPrices!.forEach(cp => {
         const cheaper = p.price < cp.price;
-        ctx.fillStyle = '#f8fafc';
-        ctx.beginPath(); rr(rx, ry, rw, 34, 7); ctx.fill();
-
-        ctx.fillStyle = '#334155'; ctx.font = '12px system-ui,sans-serif';
-        ctx.fillText(cp.platform, rx + 11, ry + 22);
-
+        ctx.fillStyle = '#f8fafc'; ctx.beginPath(); rr(px, cy, rw, 36, 8); ctx.fill();
+        ctx.fillStyle = '#334155'; ctx.font = '13px system-ui,sans-serif';
+        ctx.fillText(cp.platform, px + 13, cy + 23);
         const cpS = `$${cp.price.toFixed(2)}`;
         if (cheaper) {
           const savePct = Math.round((cp.price - p.price) / cp.price * 100);
           const saveS = `Ahorras ${savePct}%`;
           ctx.font = 'bold 10px system-ui,sans-serif';
-          const sw = ctx.measureText(saveS).width + 12;
-          ctx.fillStyle = '#d1fae5';
-          ctx.beginPath(); rr(rx + rw - sw, ry + 9, sw, 16, 4); ctx.fill();
-          ctx.fillStyle = '#059669'; ctx.fillText(saveS, rx + rw - sw + 6, ry + 21);
-          ctx.font = 'bold 12px system-ui,sans-serif';
-          const cw = ctx.measureText(cpS).width;
-          ctx.fillStyle = '#059669'; ctx.fillText(cpS, rx + rw - sw - cw - 10, ry + 22);
+          const sw = ctx.measureText(saveS).width + 14;
+          ctx.fillStyle = '#d1fae5'; ctx.beginPath(); rr(px + rw - sw, cy + 9, sw, 18, 5); ctx.fill();
+          ctx.fillStyle = '#059669'; ctx.fillText(saveS, px + rw - sw + 7, cy + 22);
+          ctx.font = 'bold 13px system-ui,sans-serif';
+          ctx.fillStyle = '#059669';
+          ctx.fillText(cpS, px + rw - sw - ctx.measureText(cpS).width - 12, cy + 23);
         } else {
-          ctx.font = 'bold 12px system-ui,sans-serif';
-          ctx.fillStyle = '#0f172a';
-          const cw = ctx.measureText(cpS).width;
-          ctx.fillText(cpS, rx + rw - cw, ry + 22);
+          ctx.font = 'bold 13px system-ui,sans-serif'; ctx.fillStyle = '#0f172a';
+          ctx.fillText(cpS, px + rw - ctx.measureText(cpS).width, cy + 23);
         }
-        ry += 40;
+        cy += 46;
       });
     }
 
-    /* Footer */
-    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, H - FTR_H, W, FTR_H);
-    ctx.strokeStyle = '#e2e8f0';
-    ctx.beginPath(); ctx.moveTo(0, H - FTR_H); ctx.lineTo(W, H - FTR_H); ctx.stroke();
-    ctx.fillStyle = '#94a3b8'; ctx.font = '11px system-ui,sans-serif';
-    ctx.fillText(`miniprecios.com · ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}`,
-                 22, H - FTR_H + 23);
+    /* ── Footer bar ── */
+    const footerY = H - FTR_H;
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, footerY, W, FTR_H);
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, footerY); ctx.lineTo(W, footerY); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.font = '12px system-ui,sans-serif';
+    ctx.fillText(
+    //miniprecios.com  ·
+      `  
+      ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+      px, footerY + 27
+    );
 
     return canvas;
   }

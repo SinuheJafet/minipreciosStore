@@ -44,7 +44,7 @@
           <input type="checkbox" class="dt-check" [checked]="allChecked" (change)="toggleCheckAll()">
         </th>
         <td mat-cell *cdkCellDef="let row" class="dt-check-cell">
-          <input type="checkbox" class="dt-check" [checked]="isChecked(row)" (change)="toggleCheck(row, $event)">
+          <input *ngIf="canShowCheck(row)" type="checkbox" class="dt-check" [checked]="isChecked(row)" (change)="toggleCheck(row, $event)">
         </td>
       </ng-container>
 

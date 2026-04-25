@@ -2,6 +2,8 @@ export interface AdminOrder {
   id: string;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
+  notes?: string;
   items: { name: string; qty: number; price: number; image: string; sku: string; }[];
   subtotal: number;
   discount: number;
