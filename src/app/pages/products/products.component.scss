@@ -1,14 +1,23 @@
 .products-page {
   max-width: 1400px;
-  margin: 100px auto 60px;
+  margin: 90px auto 60px;
   padding: 0 24px;
   display: grid;
   grid-template-columns: 260px 1fr;
   gap: 32px;
   align-items: start;
 
-  @media (max-width: 1024px) { grid-template-columns: 220px 1fr; }
-  @media (max-width: 768px) { grid-template-columns: 1fr; }
+  @media (max-width: 1024px) { grid-template-columns: 220px 1fr; gap: 24px; }
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    margin-top: 72px;
+    padding: 0 16px;
+    gap: 16px;
+  }
+  @media (max-width: 480px) {
+    margin-top: 64px;
+    padding: 0 12px;
+  }
 }
 
 .sidebar {

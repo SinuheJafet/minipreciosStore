@@ -26,18 +26,24 @@ export class AuthService {
   login(email: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, { email, password }).pipe(
       tap(res => this.persist(res.token, res.user)),
-      catchError(err => throwError(() => new Error(
-        err.status === 401 ? 'Email o contraseña incorrectos' : 'Error al iniciar sesión'
-      )))
+      catchError(err => {
+        const msg = err.status === 401 ? 'Email o contraseña incorrectos'
+                  : err.status === 0   ? 'Sin conexión con el servidor. ¿Está el backend activo?'
+                  : err.error?.message ?? 'Error al iniciar sesión';
+        return throwError(() => new Error(msg));
+      })
     );
   }
 
   register(name: string, email: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, { name, email, password }).pipe(
       tap(res => this.persist(res.token, res.user)),
-      catchError(err => throwError(() => new Error(
-        err.status === 409 ? 'El email ya está registrado' : 'Error al registrarse'
-      )))
+      catchError(err => {
+        const msg = err.status === 409 ? 'El email ya está registrado'
+                  : err.status === 0   ? 'Sin conexión con el servidor. ¿Está el backend activo?'
+                  : err.error?.message ?? 'Error al registrarse';
+        return throwError(() => new Error(msg));
+      })
     );
   }
 

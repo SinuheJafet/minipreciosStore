@@ -1,5 +1,5 @@
 <!-- Hero Banner -->
-<section class="hero">
+<section class="hero" *ngIf="banners.length">
   <div class="hero__slides">
     <div class="hero__slide" *ngFor="let b of banners; let i = index"
          [class.active]="i === activeBanner"
@@ -89,24 +89,24 @@
 
 <!-- Promo Banner -->
 <section class="promo-banner"
+         *ngIf="promoBanner"
          [style.background]="promoBannerBg">
   <div class="promo-banner__container">
     <div class="promo-banner__content">
-      <span class="promo-tag" *ngIf="promoBanner?.subtitle || !promoBanner">
-        {{ promoBanner?.subtitle || 'Tiempo limitado' }}
+      <span class="promo-tag" *ngIf="promoBanner?.subtitle">
+        {{ promoBanner?.subtitle }}
       </span>
-      <h2 [style.color]="promoBanner?.textColor || null" *ngIf="promoBanner">{{ promoBanner.title }}</h2>
-      <h2 *ngIf="!promoBanner">Hasta <strong>40% de descuento</strong> en cuidado de piel</h2>
+      <h2 [style.color]="promoBanner?.textColor || null">{{ promoBanner?.title }}</h2>
       <a [routerLink]="promoBanner?.ctaLink || '/products'"
-         [queryParams]="!promoBanner ? {category:'skincare'} : {}"
+         [queryParams]="{}"
          class="btn-white"
          [style.color]="promoBanner?.bgColor || null">
-        {{ promoBanner?.ctaText || 'Ver ofertas de skincare' }}
+        {{ promoBanner?.ctaText || 'Ver oferta' }}
       </a>
     </div>
     <div class="promo-banner__img">
-      <img [src]="promoBanner?.imageUrl || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&q=80'"
-           [alt]="promoBanner?.title || 'Skincare ofertas'">
+      <img [src]="promoBanner?.imageUrl"
+           [alt]="promoBanner?.title || 'Oferta'">
     </div>
   </div>
 </section>

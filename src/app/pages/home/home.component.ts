@@ -12,12 +12,6 @@ interface HeroBanner {
   filter: string; bg: string; img: string; bgColor: string; textColor: string;
 }
 
-const DEFAULT_BANNERS: HeroBanner[] = [
-  { title: 'Cuídate sin gastar de más', subtitle: 'Hasta 40% de descuento en higiene y cuidado personal. Las mejores marcas al mejor precio', cta: 'Explorar ofertas', link: '/products', filter: 'sale', bg: 'gradient-1', img: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&q=80', bgColor: '', textColor: '' },
-  { title: 'Skincare que realmente funciona', subtitle: 'CeraVe, La Roche-Posay, Nivea y más. Tu piel merece lo mejor', cta: 'Ver skincare', link: '/products', filter: '', bg: 'gradient-2', img: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=600&q=80', bgColor: '', textColor: '' },
-  { title: 'Tu rutina de belleza completa', subtitle: 'Maquillaje, fragancias y cuidado corporal. Todo en un solo lugar', cta: 'Ver maquillaje', link: '/products', filter: '', bg: 'gradient-3', img: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&q=80', bgColor: '', textColor: '' },
-];
-
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -28,7 +22,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   saleProducts: Product[] = [];
   categories: Category[] = [];
 
-  banners: HeroBanner[] = DEFAULT_BANNERS;
+  banners: HeroBanner[] = [];
   activeBanner = 0;
   promoBanner: AdminBanner | null = null;
   private subs = new Subscription();
@@ -57,19 +51,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.subs.add(this.productService.getSaleProducts().subscribe(p => this.saleProducts = p.slice(0, 4)));
     this.subs.add(this.productService.getCategories().subscribe(c => this.categories = c));
 
-    this.subs.add(this.bannersService.getPublicBanners('hero').subscribe(heroBanners => {
-      this.banners = heroBanners.length
-        ? heroBanners.sort((a, b) => a.position - b.position).map(b => ({
-            title: b.title, subtitle: b.subtitle, cta: b.ctaText, link: b.ctaLink,
-            filter: '', bg: '', img: b.imageUrl, bgColor: b.bgColor, textColor: b.textColor,
-          }))
-        : DEFAULT_BANNERS;
-      if (this.activeBanner >= this.banners.length) this.activeBanner = 0;
-    }));
-
-    this.subs.add(this.bannersService.getPublicBanners('promo').subscribe(promoBanners => {
-      this.promoBanner = promoBanners.sort((a, b) => a.position - b.position)[0] ?? null;
-    }));
+    this.loadHeroBanners();
+    this.loadPromoBanner();
 
     this.subs.add(
       this.rt.on<Product>('ProductUpdated').subscribe(updated => {
@@ -105,7 +88,18 @@ export class HomeComponent implements OnInit, OnDestroy {
       })
     );
 
+    this.subs.add(this.rt.on<unknown>('BannerUpdated').subscribe(() => this.reloadBanners()));
+    this.subs.add(this.rt.on<unknown>('BannerCreated').subscribe(() => this.reloadBanners()));
+    this.subs.add(this.rt.on<unknown>('BannerDeleted').subscribe(() => this.reloadBanners()));
+    this.subs.add(this.rt.on<unknown>('BannerToggled').subscribe(() => this.reloadBanners()));
+    this.subs.add(this.rt.on<unknown>('BannerChanged').subscribe(() => this.reloadBanners()));
+    this.subs.add(this.rt.on<unknown>('BannersChanged').subscribe(() => this.reloadBanners()));
+
     this.bannerIntervalId = setInterval(() => {
+      if (!this.banners.length) {
+        this.activeBanner = 0;
+        return;
+      }
       this.activeBanner = (this.activeBanner + 1) % this.banners.length;
     }, 5000);
   }
@@ -139,5 +133,38 @@ export class HomeComponent implements OnInit, OnDestroy {
       merged.competitorPrices = base.competitorPrices;
     }
     return merged;
+  }
+
+  private reloadBanners(): void {
+    this.loadHeroBanners();
+    this.loadPromoBanner();
+  }
+
+  private loadHeroBanners(): void {
+    this.subs.add(this.bannersService.getPublicBanners('hero').subscribe(heroBanners => {
+      this.banners = heroBanners
+        .sort((a, b) => a.position - b.position)
+        .map(b => ({
+          title: b.title,
+          subtitle: b.subtitle,
+          cta: b.ctaText,
+          link: b.ctaLink,
+          filter: '',
+          bg: '',
+          img: b.imageUrl,
+          bgColor: b.bgColor,
+          textColor: b.textColor,
+        }));
+
+      if (this.activeBanner >= this.banners.length) {
+        this.activeBanner = 0;
+      }
+    }));
+  }
+
+  private loadPromoBanner(): void {
+    this.subs.add(this.bannersService.getPublicBanners('promo').subscribe(promoBanners => {
+      this.promoBanner = promoBanners.sort((a, b) => a.position - b.position)[0] ?? null;
+    }));
   }
 }

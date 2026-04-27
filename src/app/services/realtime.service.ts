@@ -27,6 +27,11 @@ export interface HubMessage<T = unknown> {
  *   OrderStatusChanged → { id, status, trackingNumber? }
  *   InventoryChanged → { productId, stock }
  *   BannerUpdated    → { id, ... }
+ *   BannerCreated    → { id, ... }
+ *   BannerDeleted    → { id }
+ *   BannerToggled    → { id, ... }
+ *   BannerChanged    → { id, ... }
+ *   BannersChanged   → { ... }
  */
 @Injectable({ providedIn: 'root' })
 export class RealtimeService implements OnDestroy {
@@ -101,6 +106,11 @@ export class RealtimeService implements OnDestroy {
       'OrderStatusChanged',
       'InventoryChanged',
       'BannerUpdated',
+      'BannerCreated',
+      'BannerDeleted',
+      'BannerToggled',
+      'BannerChanged',
+      'BannersChanged',
     ];
 
     for (const event of events) {

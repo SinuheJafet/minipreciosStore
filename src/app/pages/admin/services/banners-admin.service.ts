@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, catchError, of } from 'rxjs';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { BehaviorSubject, Observable, catchError, map, of } from 'rxjs';
 import { AdminBanner } from '../../../models/admin.model';
 import { environment } from '../../../../environments/environment';
 
@@ -18,8 +18,23 @@ export class BannersAdminService {
 
   /** Endpoint público — usado por la tienda (home) */
   getPublicBanners(type?: string): Observable<AdminBanner[]> {
-    const url = type ? `${this.api}/active?type=${type}` : `${this.api}/active`;
-    return this.http.get<AdminBanner[]>(url).pipe(catchError(() => of([] as AdminBanner[])));
+    let params = new HttpParams().set('_ts', Date.now().toString());
+    if (type) {
+      params = params.set('type', type);
+    }
+
+    const headers = new HttpHeaders({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
+
+    return this.http.get<AdminBanner[]>(`${this.api}/active`, { params, headers }).pipe(
+      catchError(() => of([] as AdminBanner[])),
+      // Extra guard to avoid stale/invalid items rendered by clients.
+      // Backend should enforce this too, but client-side filtering prevents ghost banners.
+      map(list => this.sanitizePublicBanners(list, type))
+    );
   }
 
   add(banner: Omit<AdminBanner, 'id'>): void {
@@ -45,5 +60,32 @@ export class BannersAdminService {
   private load(): void {
     this.http.get<AdminBanner[]>(this.api).pipe(catchError(() => of([] as AdminBanner[])))
       .subscribe(list => this._data.next(list));
+  }
+
+  private sanitizePublicBanners(list: AdminBanner[], type?: string): AdminBanner[] {
+    const now = new Date();
+    const byId = new Map<number, AdminBanner>();
+
+    for (const banner of list) {
+      if (type && banner.type !== type) {
+        continue;
+      }
+      if (!banner.isActive) {
+        continue;
+      }
+
+      const validFrom = banner.validFrom ? new Date(banner.validFrom) : null;
+      const validTo = banner.validTo ? new Date(banner.validTo) : null;
+      if (validFrom && validFrom > now) {
+        continue;
+      }
+      if (validTo && validTo < now) {
+        continue;
+      }
+
+      byId.set(banner.id, banner);
+    }
+
+    return Array.from(byId.values()).sort((a, b) => a.position - b.position);
   }
 }

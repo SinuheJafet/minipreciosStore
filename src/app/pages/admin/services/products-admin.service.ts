@@ -41,8 +41,17 @@ export class ProductsAdminService implements OnDestroy {
   private load(): void {
     const p = new HttpParams().set('pageSize', 200);
     this.http.get<PagedResponse<Product>>(this.api, { params: p }).pipe(
-      map(res => res.data),
-      catchError(() => of([] as Product[]))
+      map(res => {
+        if (!res || !Array.isArray(res.data)) {
+          console.warn('[ProductsAdminService] Unexpected response shape:', res);
+          return [] as Product[];
+        }
+        return res.data;
+      }),
+      catchError(err => {
+        console.error('[ProductsAdminService] load() failed:', err.status, err.message, err);
+        return of([] as Product[]);
+      })
     ).subscribe(data => this._data.next(data));
   }
 

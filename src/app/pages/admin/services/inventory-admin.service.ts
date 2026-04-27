@@ -74,7 +74,10 @@ export class InventoryAdminService implements OnDestroy {
   private loadInventory(): void {
     this.http.get<PagedResponse<InvProductDto> | InvProductDto[]>(this.api).pipe(
       map(res => Array.isArray(res) ? res : res.data),
-      catchError(() => of([] as InvProductDto[]))
+      catchError(err => {
+        console.error('[InventoryAdminService] loadInventory() failed:', err.status, err.message, err);
+        return of([] as InvProductDto[]);
+      })
     ).subscribe(list => this._inventory.next(list.map(mapToProduct)));
   }
 

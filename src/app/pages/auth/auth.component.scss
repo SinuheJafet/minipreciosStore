@@ -5,13 +5,18 @@
   justify-content: center;
   background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #6d28d9 100%);
   padding: 24px;
+  /* Móvil: scroll si el form supera la pantalla */
+  overflow-y: auto;
+  @media (max-width: 640px) {
+    align-items: flex-start;
+    padding: 20px 16px;
+  }
 }
 
 .auth-card {
   display: flex;
   width: 100%;
   max-width: 900px;
-  min-height: 560px;
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 25px 60px rgba(0,0,0,0.4);
@@ -65,8 +70,13 @@
 
   @media (max-width: 640px) {
     flex-direction: column;
+    border-radius: 16px;
     &__brand { display: none; }
-    &__form { padding: 40px 28px; }
+    &__form { padding: 32px 22px; }
+  }
+  @media (max-width: 380px) {
+    border-radius: 12px;
+    &__form { padding: 24px 16px; }
   }
 }
 

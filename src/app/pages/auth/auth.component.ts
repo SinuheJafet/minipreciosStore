@@ -50,7 +50,7 @@ export class AuthComponent {
       },
       error: (err: Error) => {
         this.loading = false;
-        this.loginError = err.message;
+        this.loginError = err.message || 'No se pudo conectar con el servidor. Verifica tu conexión.';
       },
     });
   }
@@ -62,7 +62,10 @@ export class AuthComponent {
     const { name, email, password } = this.registerForm.value;
     this.authService.register(name, email, password).subscribe({
       next: () => { this.loading = false; this.router.navigate(['/']); },
-      error: (err: Error) => { this.loading = false; this.registerError = err.message; },
+      error: (err: Error) => {
+        this.loading = false;
+        this.registerError = err.message || 'No se pudo crear la cuenta. Inténtalo de nuevo.';
+      },
     });
   }
 
