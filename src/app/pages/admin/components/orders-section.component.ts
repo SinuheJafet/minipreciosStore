@@ -5,6 +5,8 @@ import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-t
 import { AdminOrder } from '../../../models/admin.model';
 import { OrdersAdminService } from '../services/orders-admin.service';
 import { InventoryAdminService } from '../services/inventory-admin.service';
+import { Product } from '../../../models/product.model';
+import { ProductsAdminService } from '../services/products-admin.service';
 
 type OrderStatus = 'all' | 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -28,7 +30,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
 })
 export class OrdersSectionComponent implements OnInit {
   orders!: Observable<AdminOrder[]>;
-  constructor(private svc: OrdersAdminService, private invSvc: InventoryAdminService) {}
+  constructor(private svc: OrdersAdminService, private invSvc: InventoryAdminService, private prodSvc: ProductsAdminService) {}
 
   private statusFilter$ = new BehaviorSubject<OrderStatus>('all');
   filtered$!: Observable<AdminOrder[]>;
@@ -37,6 +39,13 @@ export class OrdersSectionComponent implements OnInit {
 
   selectedOrder: AdminOrder | null = null;
   trackingInput = '';
+  allProducts: Product[] = [];
+  editingItems = false;
+  editItems: Array<{ name: string; qty: number; price: number; image: string; sku: string; productId?: number }> = [];
+  itemSearch = '';
+  itemResults: Product[] = [];
+  showItemDropdown = false;
+  savingItems = false;
 
   readonly statusLabels = STATUS_LABELS;
   readonly tabs: { key: OrderStatus; label: string }[] = [
@@ -102,6 +111,7 @@ export class OrdersSectionComponent implements OnInit {
     this.filtered$ = combineLatest([this.orders, this.statusFilter$]).pipe(
       map(([orders, status]) => status === 'all' ? orders : orders.filter(o => o.status === status))
     );
+    this.prodSvc.getProducts().subscribe(p => this.allProducts = p);
   }
 
   setTab(tab: OrderStatus): void { this.activeTab = tab; this.statusFilter$.next(tab); }
@@ -151,4 +161,76 @@ export class OrdersSectionComponent implements OnInit {
   itemTotal(order: AdminOrder): number {
     return order.items.reduce((s, i) => s + i.qty * i.price, 0);
   }
+
+  get canEditItems(): boolean {
+    return !!this.selectedOrder && !['delivered', 'cancelled'].includes(this.selectedOrder.status);
+  }
+
+  get editSubtotal(): number {
+    return this.editItems.reduce((s, i) => s + i.qty * i.price, 0);
+  }
+
+  get itemSearchResults(): Product[] {
+    const q = this.itemSearch.toLowerCase().trim();
+    if (!q) return [];
+    return this.allProducts
+      .filter(p => p.stock > 0 && (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)))
+      .slice(0, 8);
+  }
+
+  startEditItems(): void {
+    if (!this.selectedOrder) return;
+    this.editItems = this.selectedOrder.items.map(i => ({ ...i }));
+    this.editingItems = true;
+    this.itemSearch = '';
+  }
+
+  cancelEditItems(): void {
+    this.editItems = [];
+    this.editingItems = false;
+    this.itemSearch = '';
+    this.showItemDropdown = false;
+  }
+
+  addToEdit(product: Product): void {
+    const existing = this.editItems.find(i => i.productId === product.id || i.sku === product.sku);
+    if (existing) {
+      existing.qty++;
+    } else {
+      this.editItems.push({ name: product.name, qty: 1, price: product.price, image: product.images[0] ?? '', sku: product.sku, productId: product.id });
+    }
+    this.itemSearch = '';
+    this.showItemDropdown = false;
+  }
+
+  removeFromEdit(i: number): void { this.editItems.splice(i, 1); }
+
+  changeQty(i: number, delta: number): void {
+    const item = this.editItems[i];
+    const next = item.qty + delta;
+    if (next <= 0) { this.editItems.splice(i, 1); } else { item.qty = next; }
+  }
+
+  saveItems(): void {
+    if (!this.selectedOrder || this.savingItems || !this.editItems.length) return;
+    this.savingItems = true;
+    const items = this.editItems
+      .map(i => ({
+        productId: i.productId ?? this.allProducts.find(p => p.sku === i.sku)?.id ?? 0,
+        quantity: i.qty,
+        price: i.price,
+      }))
+      .filter(i => i.productId > 0);
+    this.svc.updateItems(this.selectedOrder.id, items).subscribe(ok => {
+      this.savingItems = false;
+      if (ok && this.selectedOrder) {
+        const newItems = this.editItems.map(i => ({ ...i }));
+        const subtotal = this.editSubtotal;
+        this.selectedOrder = { ...this.selectedOrder, items: newItems, subtotal, total: subtotal + (this.selectedOrder.shipping ?? 0) - (this.selectedOrder.discount ?? 0) };
+        this.cancelEditItems();
+      }
+    });
+  }
+
+  onItemSearchBlur(): void { setTimeout(() => { this.showItemDropdown = false; }, 180); }
 }

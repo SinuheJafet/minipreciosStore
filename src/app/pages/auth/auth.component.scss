@@ -223,3 +223,11 @@
   text-align: center;
   span { font-weight: 700; }
 }
+
+.session-expired-banner {
+  display: flex; align-items: center; gap: 8px;
+  background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
+  border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; font-weight: 500; margin-bottom: 4px;
+  svg { flex-shrink: 0; color: #d97706; }
+}

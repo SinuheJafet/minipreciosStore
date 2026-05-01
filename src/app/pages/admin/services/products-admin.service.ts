@@ -73,6 +73,13 @@ export class ProductsAdminService implements OnDestroy {
     );
   }
 
+  reload(): void { this.load(); }
+
+  /** Parcha el caché local inmediatamente (antes de que responda el backend) */
+  patchLocal(id: number, changes: Partial<Product>): void {
+    this._data.next(this._data.value.map(p => p.id === id ? { ...p, ...changes } : p));
+  }
+
   addCompetitorPrice(productId: number, payload: CompetitorPricePayload): Observable<unknown> {
     return this.http.post(`${this.api}/${productId}/competitor-prices`, payload).pipe(
       catchError(() => of(null))

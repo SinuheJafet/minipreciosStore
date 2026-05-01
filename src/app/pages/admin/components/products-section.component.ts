@@ -8,6 +8,8 @@ import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-t
 import { ProductsAdminService } from '../services/products-admin.service';
 import { InventoryAdminService } from '../services/inventory-admin.service';
 import { ProductService } from '../../../services/product.service';
+import { PurchaseBatchesService } from '../services/purchase-batches.service';
+import { PurchaseBatch } from '../../../models/admin.model';
 
 interface CompetitorPriceForm {
   platform: string;
@@ -47,7 +49,40 @@ export class ProductsSectionComponent implements OnInit {
   allMovements: InventoryMovement[] = [];
 
   /* ── Tabs ── */
-  activeTab: 'catalog' | 'movements' = 'catalog';
+  activeTab: 'catalog' | 'movements' | 'batches' = 'catalog';
+
+  /* ── Lotes de compra ── */
+  allBatches: PurchaseBatch[] = [];
+  showBatchModal = false;
+  batchForm = { code: '', supplierName: '', totalInvested: null as number | null, description: '' };
+  expandedBatchId: number | null = null;
+  deletingBatchId: number | null = null;
+  get deletingBatch(): PurchaseBatch | null {
+    return this.allBatches.find(b => b.id === this.deletingBatchId) ?? null;
+  }
+
+  get batchesWithStats(): PurchaseBatch[] {
+    return this.allBatches.map(b => {
+      const linked = this.productsInBatch(b.id);
+      const totalRevenuePotential = linked.reduce((s, p) => s + p.price * p.stock, 0);
+      const roi = b.totalInvested > 0
+        ? ((totalRevenuePotential - b.totalInvested) / b.totalInvested) * 100 : 0;
+      return { ...b, productCount: linked.length, totalRevenuePotential, roi };
+    });
+  }
+
+  /** Movimientos de entrada vinculados a este lote por lotCode */
+  batchMovements(batchId: number): InventoryMovement[] {
+    const batch = this.allBatches.find(b => b.id === batchId);
+    if (!batch) return [];
+    return this.allMovements.filter(m => m.type === 'entrada' && m.lotCode === batch.code);
+  }
+
+  /** Productos únicos en el lote, derivados de sus movimientos */
+  productsInBatch(batchId: number): Product[] {
+    const ids = new Set(this.batchMovements(batchId).map(m => m.productId));
+    return this.allProducts.filter(p => ids.has(p.id));
+  }
 
   /* ── Modal movimiento ── */
   showMovModal = false;
@@ -59,7 +94,13 @@ export class ProductsSectionComponent implements OnInit {
   movQty = 1;
   movNotes = '';
   movLotCode = '';
+  movBatchId: number | null = null;
+  movUnitCost: number | null = null;
   concepts: string[] = MOVEMENT_CONCEPTS.entrada;
+
+  get movProductCurrentPrice(): number {
+    return this.allProducts.find(p => p.id === this.movProductId)?.price ?? 0;
+  }
 
   get movProductResults(): Product[] {
     const q = this.movProductSearch.toLowerCase().trim();
@@ -88,6 +129,7 @@ export class ProductsSectionComponent implements OnInit {
     private svc: ProductsAdminService,
     private invSvc: InventoryAdminService,
     private productService: ProductService,
+    private batchSvc: PurchaseBatchesService,
   ) {}
 
   ngOnInit(): void {
@@ -111,7 +153,56 @@ export class ProductsSectionComponent implements OnInit {
     this.movements = this.invSvc.getMovements();
     this.movements.subscribe(m => this.allMovements = m);
 
+    this.batchSvc.getBatches().subscribe(b => this.allBatches = b);
+
     this.loadCategories();
+  }
+
+  /* ── Lotes de compra ── */
+  openBatchCreate(): void {
+    this.batchForm = {
+      code: this.batchSvc.suggestCode(this.allBatches),
+      supplierName: '', totalInvested: null, description: '',
+    };
+    this.showBatchModal = true;
+  }
+  closeBatchModal(): void { this.showBatchModal = false; }
+  saveBatch(): void {
+    if (!this.batchForm.code || !this.batchForm.totalInvested) return;
+    this.batchSvc.add({
+      code: this.batchForm.code.trim(),
+      supplierName: this.batchForm.supplierName.trim() || undefined,
+      totalInvested: this.batchForm.totalInvested,
+      description: this.batchForm.description.trim() || undefined,
+    });
+    this.closeBatchModal();
+  }
+  confirmRemoveBatch(id: number): void { this.deletingBatchId = id; }
+  cancelRemoveBatch(): void { this.deletingBatchId = null; }
+  doRemoveBatch(): void {
+    if (this.deletingBatchId == null) return;
+    this.batchSvc.remove(this.deletingBatchId);
+    if (this.expandedBatchId === this.deletingBatchId) this.expandedBatchId = null;
+    this.deletingBatchId = null;
+  }
+  unlinkMovement(movement: InventoryMovement): void {
+    this.invSvc.unlinkMovement(movement.id);
+  }
+
+  async shareBatch(batch: PurchaseBatch): Promise<void> {
+    if (this.isGenerating) return;
+    const products = this.productsInBatch(batch.id).filter(p => p.stock > 0);
+    if (!products.length) return;
+    this.isGenerating = true;
+    try {
+      const blob = await this.buildPDF(products);
+      await this.shareOrDownload(blob, `lote-${batch.code}-miniprecios.pdf`);
+    } finally {
+      this.isGenerating = false;
+    }
+  }
+  toggleBatch(id: number): void {
+    this.expandedBatchId = this.expandedBatchId === id ? null : id;
   }
 
   showModal       = false;
@@ -221,6 +312,25 @@ export class ProductsSectionComponent implements OnInit {
     this.showMovModal = false;
     this.movProductId = null; this.movProductSearch = ''; this.showMovDropdown = false;
     this.movConcept = ''; this.movQty = 1; this.movNotes = ''; this.movLotCode = '';
+    this.movBatchId = null; this.movUnitCost = null;
+  }
+
+  onMovBatchChange(batchId: number | null): void {
+    const batch = this.allBatches.find(b => b.id === batchId);
+    this.movLotCode = batch ? batch.code : '';
+  }
+
+  marginPct(cost: number, price: number): string {
+    if (!cost || cost <= 0) return '0';
+    return ((price - cost) / cost * 100).toFixed(1);
+  }
+
+  getProduct(id: number): Product | undefined {
+    return this.allProducts.find(p => p.id === id);
+  }
+
+  batchRevenueTotal(batchId: number): number {
+    return this.productsInBatch(batchId).reduce((s, p) => s + p.price * p.stock, 0);
   }
   selectMovProduct(p: Product): void {
     this.movProductId = p.id;
@@ -248,7 +358,14 @@ export class ProductsSectionComponent implements OnInit {
       type: this.movType, concept: this.movConcept, quantity: this.movQty,
       notes: this.movNotes, previousStock: prev, newStock,
       createdBy: 'Admin', createdAt: new Date().toISOString(),
-      ...(this.movLotCode ? { lotCode: this.movLotCode } : {}),
+      ...(this.movLotCode                              ? { lotCode:  this.movLotCode }         : {}),
+      ...(this.movUnitCost != null && this.movUnitCost ? { unitCost: Number(this.movUnitCost) } : {}),
+    }).subscribe(ok => {
+      if (ok) {
+        // Recargar productos (stock actualizado) y lotes (stats recalculadas)
+        this.svc.reload();
+        this.batchSvc.getBatches().subscribe();
+      }
     });
     this.closeMovement();
   }
@@ -293,6 +410,8 @@ export class ProductsSectionComponent implements OnInit {
       .filter(cp => cp.platform && cp.price !== null)
       .map(cp => ({ platform: cp.platform.trim(), price: cp.price!, url: cp.url?.trim() || undefined }));
 
+    // Preserve batchId/costPrice from the existing product when editing
+    const existing = this.isEdit ? this.allProducts.find(p => p.id === this.form.id) : null;
     const payload: Omit<Product, 'id'> = {
       name: this.form.name, brand: this.form.brand, category: this.form.category,
       description: this.form.description, sku: this.form.sku, price: this.form.price,
@@ -303,6 +422,8 @@ export class ProductsSectionComponent implements OnInit {
       tags: this.form.tags.split(',').map(t => t.trim()).filter(Boolean),
       images: this.form.imageUrl ? [this.form.imageUrl] : [],
       rating: 0, reviews: 0,
+      ...(existing?.batchId   != null ? { batchId:   existing.batchId   } : {}),
+      ...(existing?.costPrice != null ? { costPrice: existing.costPrice } : {}),
     };
 
     if (this.isEdit && this.form.id) {
@@ -493,21 +614,49 @@ export class ProductsSectionComponent implements OnInit {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  /* ── Wraps text into up to maxLines lines, truncating with … ── */
+  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (ctx.measureText(test).width <= maxW) {
+        current = test;
+      } else {
+        if (lines.length + 1 >= maxLines) {
+          // Last allowed line — truncate
+          while (current && ctx.measureText(current + '… ' + word).width > maxW)
+            current = current.slice(0, -1).trimEnd();
+          lines.push((current + '…').trim());
+          return lines;
+        }
+        lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+
   /* ── Canvas renderer — diseño vertical portrait que coincide con el card del modal ── */
   private renderCanvas(p: Product, productImg: HTMLImageElement | null): HTMLCanvasElement {
-    const cpCount = p.competitorPrices?.length ?? 0;
-    const W       = 800;
-    const HDR_H   = 54;
-    const IMG_H   = 380;   // siempre reservar espacio (imagen o placeholder)
-    const FTR_H   = 42;
-    const PAD     = 30;
+    const cpCount  = p.competitorPrices?.length ?? 0;
+    const hasDesc  = !!(p.description?.trim());
+    const isLow    = p.stock > 0 && p.stock <= 5;
+    const W        = 800;
+    const HDR_H    = 54;
+    const IMG_H    = 380;
+    const FTR_H    = 42;
+    const PAD      = 30;
+    const DESC_H   = hasDesc ? 68 : 0;   // max 3 lines × 20px + 8px gap
+    const STOCK_H  = isLow   ? 32 : 0;   // urgency badge
     // textH debe coincidir EXACTAMENTE con los cy+= del dibujo:
-    // PAD(top) + brand(26) + name(40) + price(58) + divider(20)
-    // + competitors: title(16) + rows(46 c/u)
-    // + PAD(bottom)
-    const textH   = PAD + 26 + 40 + 58 + 20
-                  + (cpCount > 0 ? 16 + cpCount * 46 : 0)
-                  + PAD;
+    // PAD + brand(26) + name(40) + desc(DESC_H) + price(58) + stock(STOCK_H) + divider(20)
+    // + competitors: title(16) + rows(46 c/u) + PAD
+    const textH = PAD + 26 + 40 + DESC_H + 58 + STOCK_H + 20
+                + (cpCount > 0 ? 16 + cpCount * 46 : 0)
+                + PAD;
     const H = HDR_H + IMG_H + textH + FTR_H;
 
     const canvas = document.createElement('canvas');
@@ -575,6 +724,14 @@ export class ProductsSectionComponent implements OnInit {
     if (nameText !== p.name) nameText += '…';
     ctx.fillText(nameText, px, cy); cy += 40;
 
+    // Descripción (máx 2 líneas)
+    if (hasDesc) {
+      ctx.fillStyle = '#64748b'; ctx.font = '13px system-ui,sans-serif';
+      const descLines = this.wrapText(ctx, p.description!, rw, 3);
+      descLines.forEach(l => { ctx.fillText(l, px, cy); cy += 20; });
+      cy += 8;
+    }
+
     // Precio principal
     const priceStr = `$${p.price.toFixed(2)}`;
     ctx.fillStyle = '#7c3aed'; ctx.font = 'bold 36px system-ui,sans-serif';
@@ -595,6 +752,19 @@ export class ProductsSectionComponent implements OnInit {
       ctx.fillStyle = '#059669'; ctx.fillText(pct, ox + ow + 17, cy + 24);
     }
     cy += 58;
+
+    // Badge de urgencia (stock bajo)
+    if (isLow) {
+      const urgText = `⚠️  ¡Solo ${p.stock} disponible${p.stock > 1 ? 's' : ''}!`;
+      ctx.font = 'bold 12px system-ui,sans-serif';
+      const uw = ctx.measureText(urgText).width + 24;
+      ctx.fillStyle = '#fef3c7';
+      ctx.beginPath(); rr(px, cy, uw, 24, 6); ctx.fill();
+      ctx.strokeStyle = '#fcd34d'; ctx.lineWidth = 1;
+      ctx.beginPath(); rr(px, cy, uw, 24, 6); ctx.stroke();
+      ctx.fillStyle = '#b45309'; ctx.fillText(urgText, px + 12, cy + 16);
+      cy += 32;
+    }
 
     // Divisor
     ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;

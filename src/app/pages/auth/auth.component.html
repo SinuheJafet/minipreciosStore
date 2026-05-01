@@ -18,6 +18,13 @@
 
     <!-- Right panel: form -->
     <div class="auth-card__form">
+
+      <!-- Banner sesión expirada -->
+      <div class="session-expired-banner" *ngIf="sessionExpired">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Tu sesión ha expirado. Inicia sesión nuevamente.
+      </div>
+
       <div class="form-header">
         <h1>{{ tab === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}</h1>
         <p>{{ tab === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?' }}

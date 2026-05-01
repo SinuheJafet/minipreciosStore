@@ -65,8 +65,16 @@
 
       <!-- Productos -->
       <section class="modal-section">
-        <h3>Productos</h3>
-        <div class="detail-items">
+        <div class="modal-section__head">
+          <h3>Productos ({{ editingItems ? editItems.length : selectedOrder.items.length }})</h3>
+          <button *ngIf="canEditOrder && !editingItems" class="btn-edit-items" (click)="startEditItems()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar
+          </button>
+        </div>
+
+        <!-- Vista normal -->
+        <div class="detail-items" *ngIf="!editingItems">
           <div class="detail-item" *ngFor="let item of selectedOrder.items">
             <img *ngIf="item.image" [src]="item.image" [alt]="item.name" class="detail-item__img">
             <div class="detail-item__info">
@@ -79,6 +87,51 @@
             </div>
           </div>
           <p *ngIf="!selectedOrder.items?.length" class="no-items">Sin productos disponibles</p>
+        </div>
+
+        <!-- Modo edición (solo pedidos pendientes) -->
+        <div class="order-items-edit" *ngIf="editingItems">
+          <div class="oie-row" *ngFor="let item of editItems; let i = index">
+            <div class="oie-info">
+              <span class="oie-name">{{ item.name }}</span>
+              <span class="oie-price">${{ item.price.toFixed(2) }}</span>
+            </div>
+            <div class="oie-controls">
+              <button class="oie-btn" (click)="changeQty(i, -1)">−</button>
+              <span class="oie-qty">{{ item.qty }}</span>
+              <button class="oie-btn" (click)="changeQty(i, 1)">+</button>
+              <button class="oie-remove" (click)="removeFromEdit(i)" title="Quitar">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <span class="oie-subtotal">${{ (item.qty * item.price) | number:'1.2-2' }}</span>
+          </div>
+
+          <div class="oie-search">
+            <div class="oie-search__wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" [(ngModel)]="itemSearch"
+                     (input)="showItemDropdown = true" (focus)="showItemDropdown = true"
+                     (blur)="onItemSearchBlur()" placeholder="Agregar producto…" autocomplete="off">
+            </div>
+            <div class="oie-dropdown" *ngIf="showItemDropdown && itemSearchResults.length">
+              <button class="oie-option" *ngFor="let p of itemSearchResults" (mousedown)="addToEdit(p)">
+                <span class="oie-opt-name">{{ p.name }}</span>
+                <span class="oie-opt-sku">{{ p.sku }}</span>
+                <span class="oie-opt-price">${{ p.price.toFixed(2) }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="oie-footer">
+            <span class="oie-total">Subtotal: <strong>${{ editSubtotal | number:'1.2-2' }}</strong></span>
+            <div class="oie-actions">
+              <button class="store-btn-cancel" (click)="cancelEditItems()">Cancelar</button>
+              <button class="store-btn-save" (click)="saveMyItems()" [disabled]="savingItems || !editItems.length">
+                {{ savingItems ? 'Guardando…' : 'Guardar cambios' }}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 

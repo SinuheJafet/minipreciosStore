@@ -4,7 +4,7 @@ export interface AdminOrder {
   customerEmail: string;
   customerPhone?: string;
   notes?: string;
-  items: { name: string; qty: number; price: number; image: string; sku: string; }[];
+  items: { name: string; qty: number; price: number; image: string; sku: string; productId?: number; }[];
   subtotal: number;
   discount: number;
   shipping: number;
@@ -30,6 +30,7 @@ export interface InventoryMovement {
   concept: string;
   quantity: number;
   lotCode?: string;
+  unitCost?: number;   // costo unitario al momento de la entrada
   notes: string;
   previousStock: number;
   newStock: number;
@@ -96,6 +97,19 @@ export interface AdminBanner {
   position: number;
   validFrom?: string;
   validTo?: string;
+}
+
+export interface PurchaseBatch {
+  id: number;
+  code: string;              // Ej: "LOTE-2026-001"
+  supplierName?: string;
+  totalInvested: number;     // monto total pagado al proveedor
+  description?: string;
+  createdAt: string;
+  // Campos calculados que devuelve el backend (o computados en frontend)
+  productCount?: number;
+  totalRevenuePotential?: number;  // sum(price * stock) de productos del lote
+  roi?: number;                    // (totalRevenuePotential - totalInvested) / totalInvested * 100
 }
 
 export const MOVEMENT_CONCEPTS = {

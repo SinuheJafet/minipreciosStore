@@ -23,6 +23,10 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       Movimientos
     </button>
+    <button class="ps-tab" [class.active]="activeTab==='batches'" (click)="activeTab='batches'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      Lotes <span *ngIf="allBatches.length" class="ps-tab-badge">{{ allBatches.length }}</span>
+    </button>
   </div>
 
   <!-- ── Catálogo ── -->
@@ -69,6 +73,144 @@
       [emptyLabel]="'Sin movimientos registrados'"
       defaultSortColumn="createdAt:desc"
     ></dynamic-table>
+  </ng-container>
+
+  <!-- ── Lotes de compra ── -->
+  <ng-container *ngIf="activeTab==='batches'">
+    <div class="batches-header">
+      <p class="batches-hint">Agrupa productos por entrada de compra para comparar lo invertido vs. el potencial de venta (ROI).</p>
+      <button class="btn-add" (click)="openBatchCreate()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo lote
+      </button>
+    </div>
+
+    <div class="batches-empty" *ngIf="!batchesWithStats.length">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      <p>Sin lotes registrados. Crea un lote para agrupar productos por entrada de compra.</p>
+    </div>
+
+    <div class="batch-list" *ngIf="batchesWithStats.length">
+      <div class="batch-card" *ngFor="let b of batchesWithStats" [class.expanded]="expandedBatchId === b.id">
+
+        <div class="batch-card__header" (click)="toggleBatch(b.id)">
+          <div class="batch-card__identity">
+            <span class="batch-code">{{ b.code }}</span>
+            <span class="batch-supplier" *ngIf="b.supplierName">{{ b.supplierName }}</span>
+            <span class="batch-date">{{ b.createdAt.substring(0, 10) }}</span>
+          </div>
+
+          <div class="batch-card__stats">
+            <div class="batch-stat">
+              <span class="batch-stat__label">Invertido</span>
+              <span class="batch-stat__value">${{ b.totalInvested.toFixed(2) }}</span>
+            </div>
+            <div class="batch-stat">
+              <span class="batch-stat__label">Potencial</span>
+              <span class="batch-stat__value">${{ (b.totalRevenuePotential ?? 0).toFixed(2) }}</span>
+            </div>
+            <div class="batch-stat">
+              <span class="batch-stat__label">Ganancia esperada</span>
+              <span class="batch-gain"
+                    [class.positive]="(b.totalRevenuePotential ?? 0) > b.totalInvested"
+                    [class.negative]="(b.totalRevenuePotential ?? 0) < b.totalInvested">
+                {{ (b.totalRevenuePotential ?? 0) >= b.totalInvested ? '+' : '' }}
+                ${{ ((b.totalRevenuePotential ?? 0) - b.totalInvested).toFixed(2) }}
+              </span>
+            </div>
+            <div class="batch-stat">
+              <span class="batch-stat__label">ROI</span>
+              <span class="batch-roi" [class.positive]="(b.roi ?? 0) > 0" [class.negative]="(b.roi ?? 0) < 0">
+                {{ (b.roi ?? 0) >= 0 ? '+' : '' }}{{ (b.roi ?? 0).toFixed(1) }}%
+              </span>
+            </div>
+            <div class="batch-stat">
+              <span class="batch-stat__label">Movimientos</span>
+              <span class="batch-stat__value">{{ batchMovements(b.id).length }}</span>
+            </div>
+          </div>
+
+          <div class="batch-card__controls">
+            <button class="batch-btn-share" (click)="$event.stopPropagation(); shareBatch(b)"
+                    [disabled]="isGenerating" title="Compartir / Descargar PDF">
+              <svg *ngIf="!isGenerating" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 12 17 16 13"/><line x1="12" y1="17" x2="12" y2="7"/></svg>
+              <svg *ngIf="isGenerating" class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            </button>
+            <button class="batch-btn-delete" (click)="$event.stopPropagation(); confirmRemoveBatch(b.id)" title="Eliminar lote">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
+            <svg class="batch-chevron" [class.open]="expandedBatchId === b.id" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+
+        <!-- Movimientos del lote (expandible) -->
+        <div class="batch-products" *ngIf="expandedBatchId === b.id">
+          <div class="batch-products__empty" *ngIf="!batchMovements(b.id).length">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+            Sin movimientos de entrada vinculados. Registra una <strong>entrada</strong> y selecciona este lote.
+          </div>
+          <table class="batch-table" *ngIf="batchMovements(b.id).length">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>SKU</th>
+                <th>Cant.</th>
+                <th>Costo unit.</th>
+                <th>Precio actual</th>
+                <th>Margen unit.</th>
+                <th>Stock act.</th>
+                <th>Val. potencial</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let m of batchMovements(b.id)">
+                <td class="bt-cost">{{ m.createdAt.substring(0,10) }}</td>
+                <td class="bt-name">{{ m.productName }}</td>
+                <td><span class="bt-sku">{{ m.productSku }}</span></td>
+                <td class="bt-cost">{{ m.quantity }}</td>
+                <td class="bt-cost">{{ m.unitCost != null ? '$' + m.unitCost!.toFixed(2) : '—' }}</td>
+                <ng-container *ngIf="getProduct(m.productId) as p; else noProduct">
+                  <td class="bt-price">${{ p.price.toFixed(2) }}</td>
+                  <td>
+                    <span *ngIf="m.unitCost != null" class="bt-margin"
+                          [class.positive]="p.price > m.unitCost!"
+                          [class.negative]="p.price < m.unitCost!">
+                      {{ p.price > m.unitCost! ? '+' : '' }}${{ (p.price - m.unitCost!).toFixed(2) }}
+                      <small>({{ marginPct(m.unitCost!, p.price) }}%)</small>
+                    </span>
+                    <span *ngIf="m.unitCost == null" class="bt-cost">—</span>
+                  </td>
+                  <td>
+                    <span class="bt-stock" [class.low]="p.stock>0&&p.stock<=5" [class.out]="p.stock===0">
+                      {{ p.stock===0 ? 'Agotado' : p.stock+' uds' }}
+                    </span>
+                  </td>
+                  <td class="bt-value">${{ (p.price * p.stock).toFixed(2) }}</td>
+                </ng-container>
+                <ng-template #noProduct>
+                  <td colspan="4" class="bt-cost">Producto no disponible</td>
+                </ng-template>
+                <td>
+                  <button class="bt-unlink" (click)="unlinkMovement(m)" title="Quitar del lote">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="batch-table-foot">
+                <td colspan="8" class="bt-foot-label">Total lote</td>
+                <td class="bt-foot-value">${{ batchRevenueTotal(b.id).toFixed(2) }}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+      </div>
+    </div>
   </ng-container>
 
 </div>
@@ -399,9 +541,38 @@
           <label>Cantidad <span class="req">*</span></label>
           <input type="number" [(ngModel)]="movQty" min="1" placeholder="1">
         </div>
-        <div class="field">
+        <div class="field" *ngIf="movType !== 'entrada'">
           <label>Código de lote <small>(opcional)</small></label>
           <input type="text" [(ngModel)]="movLotCode" placeholder="Ej. LOTE-001">
+        </div>
+      </div>
+
+      <!-- ── Entrada: lote de compra + costo unitario ── -->
+      <div class="mov-batch-section" *ngIf="movType === 'entrada'">
+        <div class="mov-batch-section__label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Lote de compra <small>— vincula esta entrada a un lote para calcular ROI</small>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Lote</label>
+            <select [(ngModel)]="movBatchId" (ngModelChange)="onMovBatchChange($event)">
+              <option [ngValue]="null">— Sin lote —</option>
+              <option *ngFor="let b of allBatches" [ngValue]="b.id">
+                {{ b.code }}{{ b.supplierName ? ' · ' + b.supplierName : '' }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Costo unitario <small>(lo que pagaste al proveedor)</small></label>
+            <div class="input-prefix">
+              <span>$</span>
+              <input type="number" [(ngModel)]="movUnitCost" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <small *ngIf="movUnitCost && movProductId" style="color:#059669">
+              Margen vs precio actual: {{ marginPct(movUnitCost, movProductCurrentPrice) }}%
+            </small>
+          </div>
         </div>
       </div>
 
@@ -416,6 +587,72 @@
           Guardar movimiento
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Nuevo lote de compra ─────────────────────────────── -->
+<div class="modal-overlay" *ngIf="showBatchModal" (click)="closeBatchModal()">
+  <div class="modal batch-modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h3>Nuevo lote de compra</h3>
+      <button class="btn-close" (click)="closeBatchModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+
+      <div class="form-row">
+        <div class="field">
+          <label>Código <span class="req">*</span></label>
+          <input type="text" [(ngModel)]="batchForm.code" placeholder="Ej. LOTE-2026-001">
+          <small style="color:#a78bfa">Se sugiere automáticamente, puedes modificarlo.</small>
+        </div>
+        <div class="field">
+          <label>Proveedor</label>
+          <input type="text" [(ngModel)]="batchForm.supplierName" placeholder="Ej. Distribuidora XYZ">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Monto total invertido <span class="req">*</span></label>
+        <div class="input-prefix">
+          <span>$</span>
+          <input type="number" [(ngModel)]="batchForm.totalInvested" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <small>Total que pagaste al proveedor por esta entrada. Usado para calcular el ROI.</small>
+      </div>
+
+      <div class="field">
+        <label>Descripción / notas</label>
+        <textarea [(ngModel)]="batchForm.description" rows="2" placeholder="Detalles del lote, condiciones, etc."></textarea>
+      </div>
+
+      <div class="modal__footer">
+        <button class="btn-cancel" (click)="closeBatchModal()">Cancelar</button>
+        <button class="btn-save" (click)="saveBatch()" [disabled]="!batchForm.code || !batchForm.totalInvested">
+          Crear lote
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm: Eliminar lote ───────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="deletingBatchId != null" (click)="cancelRemoveBatch()">
+  <div class="confirm-dialog" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </div>
+    <h3>¿Eliminar lote?</h3>
+    <p>
+      Se eliminará <strong>{{ deletingBatch?.code }}</strong>.<br>
+      Los productos asociados <strong>no se borran</strong>, solo quedan sin lote.
+    </p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" (click)="cancelRemoveBatch()">Cancelar</button>
+      <button class="btn-danger" (click)="doRemoveBatch()">Eliminar lote</button>
     </div>
   </div>
 </div>

@@ -7,6 +7,8 @@ import { RealtimeService } from '../../services/realtime.service';
 import { Subscription, interval } from 'rxjs';
 import { PaymentAccount } from '../../models/payment-account.model';
 import { PaymentAccountsService } from '../../services/payment-accounts.service';
+import { ProductService } from '../../services/product.service';
+import { Product } from '../../models/product.model';
 
 interface OrderStatusEvent { id: string; status: string; trackingNumber?: string; }
 
@@ -29,6 +31,12 @@ export class OrdersComponent implements OnInit, OnDestroy {
   paymentAccounts: PaymentAccount[] = [];
   private _subs = new Subscription();
   private subscribedOrderIds = new Set<string>();
+  editingItems = false;
+  editItems: Array<{ name: string; qty: number; price: number; image: string; sku: string; productId?: number }> = [];
+  itemSearch = '';
+  showItemDropdown = false;
+  savingItems = false;
+  private _catalogProducts: Product[] = [];
 
   readonly statusLabel: Record<string, string> = {
     pending:    'Pendiente',
@@ -58,6 +66,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
     private ordersService: OrdersAdminService,
     private rt: RealtimeService,
     private paymentAccountsService: PaymentAccountsService,
+    private productService: ProductService,
   ) {}
 
   ngOnInit(): void {
@@ -222,6 +231,74 @@ export class OrdersComponent implements OnInit, OnDestroy {
       }
     });
   }
+
+  get canEditOrder(): boolean {
+    return this.selectedOrder?.status === 'pending';
+  }
+
+  get editSubtotal(): number {
+    return this.editItems.reduce((s, i) => s + i.qty * i.price, 0);
+  }
+
+  get itemSearchResults(): Product[] {
+    const q = this.itemSearch.toLowerCase().trim();
+    if (!q) return [];
+    return this._catalogProducts
+      .filter(p => p.stock > 0 && (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)))
+      .slice(0, 8);
+  }
+
+  startEditItems(): void {
+    if (!this.selectedOrder) return;
+    this.editItems = this.selectedOrder.items.map(i => ({ ...i }));
+    this.editingItems = true;
+    this.itemSearch = '';
+    if (!this._catalogProducts.length) {
+      this.productService.getProducts({ pageSize: 200 }).subscribe(p => this._catalogProducts = p);
+    }
+  }
+
+  cancelEditItems(): void {
+    this.editItems = [];
+    this.editingItems = false;
+    this.itemSearch = '';
+    this.showItemDropdown = false;
+  }
+
+  addToEdit(product: Product): void {
+    const existing = this.editItems.find(i => i.productId === product.id || i.sku === product.sku);
+    if (existing) { existing.qty++; }
+    else { this.editItems.push({ name: product.name, qty: 1, price: product.price, image: product.images[0] ?? '', sku: product.sku, productId: product.id }); }
+    this.itemSearch = '';
+    this.showItemDropdown = false;
+  }
+
+  removeFromEdit(i: number): void { this.editItems.splice(i, 1); }
+
+  changeQty(i: number, delta: number): void {
+    const item = this.editItems[i];
+    const next = item.qty + delta;
+    if (next <= 0) this.editItems.splice(i, 1); else item.qty = next;
+  }
+
+  saveMyItems(): void {
+    if (!this.selectedOrder || this.savingItems || !this.editItems.length) return;
+    this.savingItems = true;
+    const items = this.editItems
+      .map(i => ({ productId: i.productId ?? 0, quantity: i.qty, price: i.price }))
+      .filter(i => i.productId > 0);
+    this.ordersService.updateMyOrderItems(this.selectedOrder.id, items).subscribe(ok => {
+      this.savingItems = false;
+      if (ok && this.selectedOrder) {
+        const newItems = this.editItems.map(i => ({ ...i }));
+        const subtotal = this.editSubtotal;
+        this.selectedOrder = { ...this.selectedOrder, items: newItems, subtotal, total: subtotal + (this.selectedOrder.shipping ?? 0) - (this.selectedOrder.discount ?? 0) };
+        this.cancelEditItems();
+      }
+    });
+  }
+
+  onItemSearchBlur(): void { setTimeout(() => { this.showItemDropdown = false; }, 180); }
 
   ngOnDestroy(): void {
     this.clearProofPreview();

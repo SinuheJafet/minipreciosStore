@@ -24,6 +24,8 @@ export interface Product {
   volume?: string;
   certifications?: string[];
   competitorPrices?: CompetitorPrice[];
+  batchId?: number | null;    // lote de compra al que pertenece
+  costPrice?: number | null;  // costo unitario de compra (opcional)
 }
 
 export interface Category {

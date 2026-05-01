@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 function passwordsMatch(g: AbstractControl) {
@@ -21,11 +21,18 @@ export class AuthComponent {
   showLoginPwd = false;
   showRegisterPwd = false;
   loading = false;
+  sessionExpired = false;
 
-  constructor(private fb: FormBuilder, private authService: AuthService, private router: Router) {
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute,
+  ) {
     if (authService.isLoggedIn) {
       router.navigate([authService.isAdmin ? '/admin' : '/']);
     }
+    this.sessionExpired = route.snapshot.queryParams['expired'] === '1';
     this.loginForm = this.fb.group({
       email:    ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],

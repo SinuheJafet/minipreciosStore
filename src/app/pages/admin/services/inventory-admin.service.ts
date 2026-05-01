@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subscription, catchError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, of, tap } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from 'src/app/models/product.model';
 import { InventoryMovement } from '../../../models/admin.model';
@@ -55,20 +55,28 @@ export class InventoryAdminService implements OnDestroy {
     return this._inventory.pipe(map(p => p.filter(x => x.stock > 0 && x.stock <= 5).length));
   }
 
-  addMovement(movement: Omit<InventoryMovement, 'id'>): void {
-    const body = {
+  addMovement(movement: Omit<InventoryMovement, 'id'>): Observable<boolean> {
+    const body: Record<string, unknown> = {
       productId: movement.productId,
       type:      movement.type,
       concept:   movement.concept,
       quantity:  movement.quantity,
-      lotCode:   movement.lotCode,
+      lotCode:   movement.lotCode ?? null,
       notes:     movement.notes,
     };
-    this.http.post(`${this.api}/movements`, body).pipe(catchError(() => of(null)))
-      .subscribe(() => {
-        this.loadInventory();
-        this.loadMovements();
-      });
+    if (movement.unitCost != null) body['unitCost'] = movement.unitCost;
+    return this.http.post(`${this.api}/movements`, body).pipe(
+      map(() => true),
+      catchError(err => { console.error('[Movement] POST error:', err.status, err.message); return of(false); }),
+      tap(() => { this.loadInventory(); this.loadMovements(); }),
+    );
+  }
+
+  /** Desligar un movimiento de su lote (borra lotCode) */
+  unlinkMovement(id: number): void {
+    this.http.patch(`${this.api}/movements/${id}`, { lotCode: null, unitCost: null })
+      .pipe(catchError(() => of(null)))
+      .subscribe(() => this.loadMovements());
   }
 
   private loadInventory(): void {

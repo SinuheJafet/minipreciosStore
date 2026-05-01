@@ -8,7 +8,7 @@ import { RealtimeService } from '../../../services/realtime.service';
 
 interface OrderStatusEvent { id: string; status: string; trackingNumber?: string; }
 
-interface BackendOrderItem { productName: string; productSku: string; price: number; quantity: number; }
+interface BackendOrderItem { productName: string; productSku: string; price: number; quantity: number; productId?: number; }
 
 // El backend puede usar dos convenciones según si el DTO aplica mapeo explícito
 // (customerName/customerEmail) o serializa directamente los campos de la entidad
@@ -43,6 +43,7 @@ function mapOrder(o: BackendOrder): AdminOrder {
     notes:         o.notes,
     items: (o.items ?? []).map(i => ({
       name: i.productName, qty: i.quantity, price: i.price, image: '', sku: i.productSku,
+      productId: i.productId,
     })),
     subtotal: o.subtotal, discount: o.discount, shipping: o.shipping, total: o.total,
     status:        o.status as AdminOrder['status'],
@@ -179,6 +180,21 @@ export class OrdersAdminService implements OnDestroy {
           })
         )
       ),
+      catchError(() => of(false))
+    );
+  }
+
+  updateItems(orderId: string, items: { productId: number; quantity: number; price: number }[]): Observable<boolean> {
+    return this.http.put(`${this.api}/${orderId}/items`, { items }).pipe(
+      map(() => true),
+      tap(() => this.load()),
+      catchError(() => of(false))
+    );
+  }
+
+  updateMyOrderItems(orderId: string, items: { productId: number; quantity: number; price: number }[]): Observable<boolean> {
+    return this.http.put(`${this.api}/my/${orderId}/items`, { items }).pipe(
+      map(() => true),
       catchError(() => of(false))
     );
   }

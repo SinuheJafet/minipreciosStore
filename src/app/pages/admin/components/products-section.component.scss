@@ -327,3 +327,172 @@
   display: flex; align-items: center; gap: 6px; font-size: 11px; color: #94a3b8;
   svg { flex-shrink: 0; }
 }
+
+// ── Tab badge ─────────────────────────────────────────────────────────────────
+.ps-tab-badge {
+  background: #7c3aed; color: white; font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 99px; line-height: 1.4;
+}
+
+// ── Batch field row (inside product form) ─────────────────────────────────────
+.batch-field-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  background: #f8faff; border: 1.5px solid #e0e7ff; border-radius: 12px;
+  padding: 14px 16px;
+  @media (max-width: 480px) { grid-template-columns: 1fr; }
+}
+
+// ── Batches tab ───────────────────────────────────────────────────────────────
+.batches-header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  padding: 16px 24px;
+}
+.batches-hint { font-size: 12px; color: #94a3b8; margin: 0; max-width: 520px; }
+
+.batches-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 56px 24px; color: #94a3b8; text-align: center;
+  p { margin: 0; font-size: 13px; }
+}
+
+.batch-list { padding: 0 24px 24px; display: flex; flex-direction: column; gap: 10px; }
+
+.batch-card {
+  border: 1.5px solid #e2e8f0; border-radius: 14px; overflow: hidden;
+  transition: border-color 0.15s;
+  &:hover { border-color: #c7d2fe; }
+  &.expanded { border-color: #7c3aed; }
+  &__header {
+    display: flex; align-items: center; gap: 16px; padding: 14px 18px;
+    cursor: pointer; user-select: none; background: white;
+    &:hover { background: #faf5ff; }
+  }
+  &__identity {
+    display: flex; flex-direction: column; gap: 3px; min-width: 160px;
+  }
+  &__stats {
+    display: flex; gap: 24px; flex: 1; flex-wrap: wrap;
+  }
+  &__controls {
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+}
+
+.batch-code {
+  font-size: 14px; font-weight: 700; color: #0f172a; font-family: monospace;
+}
+.batch-supplier { font-size: 12px; color: #64748b; }
+.batch-date { font-size: 11px; color: #94a3b8; }
+
+.batch-stat {
+  display: flex; flex-direction: column; gap: 2px;
+  &__label { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+  &__value { font-size: 14px; font-weight: 700; color: #0f172a; }
+}
+
+.batch-roi {
+  font-size: 14px; font-weight: 700;
+  padding: 2px 8px; border-radius: 99px;
+  background: #f1f5f9; color: #64748b;
+  &.positive { background: #d1fae5; color: #059669; }
+  &.negative { background: #fef2f2; color: #dc2626; }
+}
+
+.batch-gain {
+  font-size: 14px; font-weight: 700;
+  padding: 2px 8px; border-radius: 99px;
+  background: #f1f5f9; color: #64748b;
+  &.positive { background: #d1fae5; color: #059669; }
+  &.negative { background: #fef2f2; color: #dc2626; }
+}
+
+.batch-btn-share {
+  background: #eff6ff; border: none; border-radius: 7px; width: 30px; height: 30px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #2563eb; flex-shrink: 0; transition: background 0.15s;
+  &:hover { background: #dbeafe; }
+}
+
+.batch-btn-delete {
+  background: #fef2f2; border: none; border-radius: 7px; width: 30px; height: 30px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #dc2626; flex-shrink: 0; transition: background 0.15s;
+  &:hover { background: #fee2e2; }
+}
+
+.batch-chevron {
+  color: #94a3b8; transition: transform 0.2s; flex-shrink: 0;
+  &.open { transform: rotate(180deg); }
+}
+
+// ── Batch products table ──────────────────────────────────────────────────────
+.batch-products {
+  border-top: 1px solid #f1f5f9; background: #fafafa;
+  &__empty {
+    display: flex; align-items: center; gap: 10px; padding: 16px 20px;
+    font-size: 12px; color: #94a3b8;
+  }
+}
+
+.batch-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  th {
+    padding: 9px 14px; text-align: left; font-size: 11px; font-weight: 600;
+    color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;
+    background: #f1f5f9; border-bottom: 1px solid #e2e8f0;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f5f3ff; }
+}
+.bt-name { font-weight: 600; color: #0f172a; }
+.bt-sku {
+  font-family: monospace; font-size: 11px; background: #f1f5f9;
+  color: #475569; padding: 2px 7px; border-radius: 4px;
+}
+.bt-price { font-weight: 700; color: #7c3aed; }
+.bt-stock {
+  display: inline-block; padding: 2px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 600;
+  background: #d1fae5; color: #059669;
+  &.low { background: #fef3c7; color: #d97706; }
+  &.out { background: #fef2f2; color: #dc2626; }
+}
+.bt-cost { color: #64748b; font-size: 12px; }
+.bt-value { font-weight: 600; color: #0f172a; }
+
+// ── Batch modal ───────────────────────────────────────────────────────────────
+.batch-modal { max-width: 540px; }
+
+// ── Lote en formulario de movimiento ──────────────────────────────────────────
+.mov-batch-section {
+  background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;
+  &__label {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600; color: #059669;
+    svg { flex-shrink: 0; }
+    small { font-weight: 400; color: #6ee7b7; }
+  }
+}
+
+// ── Tabla detalle del lote: margen y totales ───────────────────────────────────
+.bt-margin {
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+  &.positive { color: #059669; }
+  &.negative { color: #dc2626; }
+  small { font-weight: 400; opacity: 0.8; }
+}
+.batch-table tfoot tr.batch-table-foot {
+  background: #f8fafc; border-top: 2px solid #e2e8f0;
+  td { padding: 11px 14px; font-weight: 700; color: #0f172a; }
+}
+.bt-foot-label { color: #64748b !important; font-weight: 600 !important; font-size: 12px !important; }
+.bt-foot-cost  { color: #64748b !important; }
+.bt-foot-value { color: #7c3aed !important; }
+.bt-unlink {
+  background: none; border: none; cursor: pointer; color: #cbd5e1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px; border-radius: 5px; transition: all 0.15s;
+  &:hover { background: #fef2f2; color: #dc2626; }
+}
