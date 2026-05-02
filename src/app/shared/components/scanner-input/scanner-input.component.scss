@@ -1,0 +1,76 @@
+.scanner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scanner-field__wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  padding: 0 10px;
+  transition: border-color 0.15s;
+}
+
+.scanner-field__wrap:focus-within {
+  border-color: #7c3aed;
+}
+
+.scanner-field__wrap--error {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.scanner-field__search {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.scanner-field__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #0f172a;
+  font-size: 13px;
+  padding: 9px 0;
+}
+
+.scanner-field__input::placeholder {
+  color: #cbd5e1;
+}
+
+.scanner-field__clear {
+  border: none;
+  background: none;
+  color: #94a3b8;
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.scanner-field__clear:hover {
+  color: #dc2626;
+}
+
+.scanner-field__scan {
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.scanner-field__error {
+  color: #dc2626;
+  font-size: 11px;
+  margin: 0 0 0 2px;
+}
+
+.scanner-field--compact .scanner-field__input {
+  font-size: 12px;
+  padding: 8px 0;
+}

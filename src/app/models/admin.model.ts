@@ -5,6 +5,7 @@ export interface AdminOrder {
   customerPhone?: string;
   notes?: string;
   items: { name: string; qty: number; price: number; image: string; sku: string; productId?: number; }[];
+  itemCount?: number;    // del endpoint de lista cuando no vienen los items completos
   subtotal: number;
   discount: number;
   shipping: number;
@@ -110,6 +111,79 @@ export interface PurchaseBatch {
   productCount?: number;
   totalRevenuePotential?: number;  // sum(price * stock) de productos del lote
   roi?: number;                    // (totalRevenuePotential - totalInvested) / totalInvested * 100
+}
+
+export interface OrdersDailySeriesPointDto {
+  date: string;
+  realized: number;
+  pending: number;
+}
+
+export interface OrdersMonthlySeriesPointDto {
+  month: number;
+  realized: number;
+  pending: number;
+}
+
+export interface OrdersReportDto {
+  realizedRevenue: number;
+  pendingRevenue: number;
+  totalOrders: number;
+  realizedOrders: number;
+  pendingOrders: number;
+  realizedRevenueToday: number;
+  ordersToday: number;
+  selectedYear: number;
+  availableYears: number[];
+  dailySeries: OrdersDailySeriesPointDto[];
+  monthlySeries: OrdersMonthlySeriesPointDto[];
+}
+
+export interface OrdersTopCustomerDto {
+  name: string;
+  email: string;
+  totalSpent: number;
+  ordersCount: number;
+  averageTicket: number;
+  lastPurchaseDate: string;
+}
+
+export interface OrdersTopProductDto {
+  productId: number;
+  productName: string;
+  sku: string;
+  quantitySold: number;
+  revenue: number;
+}
+
+export interface OrdersInsightsDto {
+  days: number;
+  realizedRevenue: number;
+  realizedOrders: number;
+  topCustomers: OrdersTopCustomerDto[];
+  topProducts: OrdersTopProductDto[];
+  statusFunnel: OrdersStatusFunnelPointDto[];
+  paymentMethods: OrdersPaymentMethodPointDto[];
+  weekdayTrend: OrdersWeekdayTrendPointDto[];
+}
+
+export interface OrdersStatusFunnelPointDto {
+  status: string;
+  label: string;
+  count: number;
+}
+
+export interface OrdersPaymentMethodPointDto {
+  method: string;
+  orders: number;
+  revenue: number;
+}
+
+export interface OrdersWeekdayTrendPointDto {
+  weekday: number;
+  label: string;
+  realized: number;
+  pending: number;
 }
 
 export const MOVEMENT_CONCEPTS = {

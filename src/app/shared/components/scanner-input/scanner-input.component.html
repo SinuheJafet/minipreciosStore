@@ -1,0 +1,34 @@
+<div class="scanner-field" [class.scanner-field--compact]="compact">
+  <div class="scanner-field__wrap" [class.scanner-field__wrap--error]="!!error">
+    <svg class="scanner-field__search" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+
+    <input
+      [value]="value"
+      (input)="onInput($event)"
+      (focus)="focusInput.emit()"
+      (blur)="blurInput.emit()"
+      (keydown.enter)="enterPressed.emit()"
+      [placeholder]="placeholder"
+      autocomplete="off"
+      class="scanner-field__input"
+    />
+
+    <button class="scanner-field__clear" *ngIf="value" type="button" (click)="clear()" title="Limpiar">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <span class="scanner-field__scan" [title]="hint">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 5h2M3 12h2M3 19h2M7 5v14M10 5v14M13 5v14M17 5v2M17 12v2M17 19v2M20 5h-3M20 12h-3M20 19h-3"></path>
+      </svg>
+    </span>
+  </div>
+
+  <p class="scanner-field__error" *ngIf="error">{{ error }}</p>
+</div>

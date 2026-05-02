@@ -1,19 +1,39 @@
-import { Component, OnInit } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { InventoryMovement } from '../../../models/admin.model';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
 import { InventoryAdminService } from '../services/inventory-admin.service';
+import { RealtimeService } from '../../../services/realtime.service';
 
 @Component({
   selector: 'admin-movements-section',
   templateUrl: './movements-section.component.html',
   styleUrls: ['./movements-section.component.scss']
 })
-export class MovementsSectionComponent implements OnInit {
+export class MovementsSectionComponent implements OnInit, OnDestroy {
   movements!: Observable<InventoryMovement[]>;
+  private destroy$ = new Subject<void>();
 
-  constructor(private svc: InventoryAdminService) {}
-  ngOnInit(): void { this.movements = this.svc.getMovements(); }
+  constructor(
+    private svc: InventoryAdminService,
+    private rt: RealtimeService,
+  ) {}
+
+  ngOnInit(): void {
+    this.reload();
+    // Recargar en tiempo real cuando se crea/modifica un movimiento
+    this.rt.on('InventoryChanged')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.reload());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  reload(): void { this.movements = this.svc.getMovements(); }
 
   columns: ColumnSource[] = [
     { columnDef: 'createdAt', headerName: 'Fecha', cell: (r: InventoryMovement) => r.createdAt.substring(0, 10) },

@@ -8,7 +8,16 @@
       </div>
       <div>
         <span class="kpi-value">${{ statsData.totalRevenue | number:'1.0-0' }}</span>
-        <span class="kpi-label">Ingresos totales</span>
+        <span class="kpi-label">Ingresos realizados</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-card--amber">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div>
+        <span class="kpi-value">${{ pendingRevenue | number:'1.0-0' }}</span>
+        <span class="kpi-label">Ingresos pendientes</span>
       </div>
     </div>
     <div class="kpi-card kpi-card--blue">
@@ -56,6 +65,231 @@
         <span class="kpi-label">Usuarios del sistema</span>
       </div>
     </div>
+
+  </div>
+
+  <div class="dash-card sales-chart-card dash-card--accent-green" *ngIf="salesSeries.length">
+    <div class="dash-card__header">
+      <h3>Ventas (realizadas y pendientes, ultimos 7 dias)</h3>
+      <div class="sales-legend">
+        <span class="sales-legend__item">
+          <span class="sales-legend__dot sales-legend__dot--realized"></span>
+          Realizadas
+        </span>
+        <span class="sales-legend__item">
+          <span class="sales-legend__dot sales-legend__dot--pending"></span>
+          Pendientes
+        </span>
+      </div>
+    </div>
+    <div class="sales-chart">
+      <div class="sales-chart__bars">
+        <div class="sales-bar-group" *ngFor="let p of salesSeries">
+          <div class="sales-bar-pair">
+            <div
+              class="sales-bar sales-bar--realized"
+              [style.height.%]="(p.realized / salesMax) * 100"
+              [style.min-height.px]="p.realized > 0 ? 6 : 0"
+              [attr.title]="p.label + ' realizadas: $' + (p.realized | number:'1.0-0')">
+            </div>
+            <div
+              class="sales-bar sales-bar--pending"
+              [style.height.%]="(p.pending / salesMax) * 100"
+              [style.min-height.px]="p.pending > 0 ? 6 : 0"
+              [attr.title]="p.label + ' pendientes: $' + (p.pending | number:'1.0-0')">
+            </div>
+          </div>
+          <span class="sales-bar-label">{{ p.label }}</span>
+          <span class="sales-bar-value">R: ${{ p.realized | number:'1.0-0' }}</span>
+          <span class="sales-bar-value sales-bar-value--pending">P: ${{ p.pending | number:'1.0-0' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-card sales-chart-card dash-card--accent-blue" *ngIf="yearlySalesSeries.length">
+    <div class="dash-card__header">
+      <h3>Ventas por mes (ano seleccionado)</h3>
+      <div class="chart-actions">
+        <label for="year-filter" class="year-filter__label">Ano:</label>
+        <select
+          id="year-filter"
+          class="year-filter"
+          [value]="selectedYear"
+          (change)="onYearChange($any($event.target).value)">
+          <option *ngFor="let y of availableYears" [value]="y">{{ y }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="sales-chart sales-chart--monthly">
+      <div class="sales-chart__bars sales-chart__bars--monthly">
+        <div class="sales-bar-group" *ngFor="let p of yearlySalesSeries">
+          <div class="sales-bar-pair">
+            <div
+              class="sales-bar sales-bar--realized"
+              [style.height.%]="(p.realized / yearlySalesMax) * 100"
+              [style.min-height.px]="p.realized > 0 ? 6 : 0"
+              [attr.title]="p.label + ' realizadas: $' + (p.realized | number:'1.0-0')">
+            </div>
+            <div
+              class="sales-bar sales-bar--pending"
+              [style.height.%]="(p.pending / yearlySalesMax) * 100"
+              [style.min-height.px]="p.pending > 0 ? 6 : 0"
+              [attr.title]="p.label + ' pendientes: $' + (p.pending | number:'1.0-0')">
+            </div>
+          </div>
+          <span class="sales-bar-label">{{ p.label }}</span>
+          <span class="sales-bar-value">R: ${{ p.realized | number:'1.0-0' }}</span>
+          <span class="sales-bar-value sales-bar-value--pending">P: ${{ p.pending | number:'1.0-0' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card insights-card dash-card--accent-green" *ngIf="topCustomers.length">
+      <div class="dash-card__header">
+        <h3>Top clientes (ultimos {{ insightsDays }} dias)</h3>
+        <div class="chart-actions">
+          <label class="year-filter__label" for="customer-sort">Criterio:</label>
+          <select id="customer-sort" class="year-filter" [value]="customerSort" (change)="onCustomerSortChange($any($event.target).value)">
+            <option value="orders">Mas compran</option>
+            <option value="spent">Mayor gasto</option>
+          </select>
+          <label class="year-filter__label" for="insights-top">Top:</label>
+          <select id="insights-top" class="year-filter" [value]="insightsTop" (change)="onInsightsTopChange($any($event.target).value)">
+            <option [value]="5">5</option>
+            <option [value]="10">10</option>
+          </select>
+        </div>
+      </div>
+      <div class="insights-bars">
+        <div class="insights-row" *ngFor="let c of topCustomers; let i = index">
+          <div class="insights-row__head">
+            <div class="insights-row__left">
+              <span class="rank-badge" [class.rank-badge--gold]="i===0" [class.rank-badge--silver]="i===1" [class.rank-badge--bronze]="i===2">#{{i+1}}</span>
+              <span class="insights-row__title">{{ c.name }}</span>
+            </div>
+            <span class="insights-row__meta">{{ c.ordersCount }} pedidos</span>
+          </div>
+          <div class="insights-track">
+            <div class="insights-fill insights-fill--customer" [style.width.%]="customerBarWidth(c.totalSpent)"></div>
+          </div>
+          <div class="insights-row__foot">
+            <span class="insights-row__value">${{ c.totalSpent | number:'1.0-0' }}</span>
+            <span class="insights-row__meta">Ticket: ${{ c.averageTicket | number:'1.0-0' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-card insights-card dash-card--accent-blue" *ngIf="topProducts.length">
+      <div class="dash-card__header">
+        <h3>Productos mas vendidos (ultimos {{ insightsDays }} dias)</h3>
+      </div>
+      <div class="insights-bars">
+        <div class="insights-row" *ngFor="let p of topProducts; let i = index">
+          <div class="insights-row__head">
+            <div class="insights-row__left">
+              <span class="rank-badge" [class.rank-badge--gold]="i===0" [class.rank-badge--silver]="i===1" [class.rank-badge--bronze]="i===2">#{{i+1}}</span>
+              <span class="insights-row__title">{{ p.productName }}</span>
+            </div>
+            <span class="insights-row__meta">{{ p.quantitySold }} uds</span>
+          </div>
+          <div class="insights-track">
+            <div class="insights-fill insights-fill--product" [style.width.%]="productBarWidth(p.revenue)"></div>
+          </div>
+          <div class="insights-row__foot">
+            <span class="insights-row__value">${{ p.revenue | number:'1.0-0' }}</span>
+            <span class="insights-row__meta">SKU: {{ p.sku }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card insights-card dash-card--accent-amber" *ngIf="statusFunnel.length">
+      <div class="dash-card__header">
+        <h3>Embudo de estados (ultimos {{ insightsDays }} dias)</h3>
+      </div>
+      <div class="insights-pie-wrap">
+        <div class="insights-pie" [style.background]="statusPieStyle()">
+          <span class="pie-center-text">{{ totalStatusCount() }}</span>
+        </div>
+        <div class="insights-bars insights-bars--compact">
+          <div class="insights-row" *ngFor="let s of statusFunnel; let i = index">
+            <div class="insights-row__head">
+              <div class="insights-row__left">
+                <span class="status-dot" [style.background]="statusDotColor(s.status)"></span>
+                <span class="insights-row__title">{{ s.label }}</span>
+              </div>
+              <span class="insights-row__meta">{{ s.count }} · {{ totalStatusCount() > 0 ? ((s.count / totalStatusCount()) * 100 | number:'1.0-0') : 0 }}%</span>
+            </div>
+            <div class="insights-track">
+              <div class="insights-fill" [style.background]="statusFillStyle(s.status)" [style.width.%]="statusBarWidth(s.count)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-card insights-card dash-card--accent-purple" *ngIf="paymentMethods.length">
+      <div class="dash-card__header">
+        <h3>Mix de metodos de pago (realizadas)</h3>
+      </div>
+      <div class="insights-pie-wrap">
+        <div class="insights-pie insights-pie--payment" [style.background]="paymentPieStyle()">
+          <span class="pie-center-text pie-center-text--payment">${{ totalPaymentRevenue() | number:'1.0-0' }}</span>
+        </div>
+        <div class="insights-bars insights-bars--compact">
+          <div class="insights-row" *ngFor="let pm of paymentMethods; let i = index">
+            <div class="insights-row__head">
+              <div class="insights-row__left">
+                <span class="status-dot" [style.background]="paymentSliceColor(i)"></span>
+                <span class="insights-row__title">{{ paymentMethodLabel(pm.method) }}</span>
+              </div>
+              <span class="insights-row__meta">{{ pm.orders }} · {{ totalPaymentRevenue() > 0 ? ((pm.revenue / totalPaymentRevenue()) * 100 | number:'1.0-0') : 0 }}%</span>
+            </div>
+            <div class="insights-track">
+              <div class="insights-fill" [style.background]="paymentSliceColor(i)" [style.width.%]="paymentBarWidth(pm.revenue)"></div>
+            </div>
+            <div class="insights-row__foot">
+              <span class="insights-row__value">${{ pm.revenue | number:'1.0-0' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-card sales-chart-card dash-card--accent-indigo" *ngIf="weekdayTrend.length">
+    <div class="dash-card__header">
+      <h3>Tendencia semanal (realizadas vs pendientes)</h3>
+      <div class="sales-legend">
+        <span class="sales-legend__item">
+          <span class="sales-legend__dot sales-legend__dot--realized"></span>
+          Realizadas
+        </span>
+        <span class="sales-legend__item">
+          <span class="sales-legend__dot sales-legend__dot--pending"></span>
+          Pendientes
+        </span>
+      </div>
+    </div>
+    <div class="sales-chart">
+      <div class="sales-chart__bars">
+        <div class="sales-bar-group" *ngFor="let w of weekdayTrend">
+          <div class="sales-bar-pair">
+            <div class="sales-bar sales-bar--realized" [style.height.%]="weekdayBarHeight(w.realized)" [style.min-height.px]="w.realized > 0 ? 6 : 0"></div>
+            <div class="sales-bar sales-bar--pending" [style.height.%]="weekdayBarHeight(w.pending)" [style.min-height.px]="w.pending > 0 ? 6 : 0"></div>
+          </div>
+          <span class="sales-bar-label">{{ w.label }}</span>
+          <span class="sales-bar-value">R: ${{ w.realized | number:'1.0-0' }}</span>
+          <span class="sales-bar-value sales-bar-value--pending">P: ${{ w.pending | number:'1.0-0' }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="dash-grid">
@@ -64,22 +298,15 @@
       <div class="dash-card__header">
         <h3>Pedidos recientes</h3>
       </div>
-      <div class="dash-table-wrap">
-        <table class="dash-table">
-          <thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Estado</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let o of recentList">
-              <td><span class="order-id-chip">{{ o.id }}</span></td>
-              <td>
-                <span class="t-name">{{ o.customerName }}</span>
-                <span class="t-sub">{{ o.customerEmail }}</span>
-              </td>
-              <td class="t-bold">${{ o.total | number:'1.0-0' }}</td>
-              <td><span class="status-pill status-pill--{{o.status}}">{{ statusLabel(o.status) }}</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <dynamic-table
+        [columns]="recentOrdersColumns"
+        [data]="recentList$"
+        [isSelectable]="false"
+        [canFilter]="false"
+        [allowXlsExport]="false"
+        [pageSize]="5"
+        [emptyLabel]="'Sin pedidos recientes'"
+      ></dynamic-table>
     </div>
 
     <!-- Low Stock -->
@@ -87,28 +314,15 @@
       <div class="dash-card__header">
         <h3>Alertas de inventario</h3>
       </div>
-      <div class="dash-table-wrap">
-        <table class="dash-table">
-          <thead><tr><th>Producto</th><th>SKU</th><th>Stock</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let p of lowStockList">
-              <td>
-                <span class="t-name">{{ p.name }}</span>
-                <span class="t-sub">{{ p.brand }}</span>
-              </td>
-              <td><code class="sku-code">{{ p.sku }}</code></td>
-              <td>
-                <span class="stock-alert-pill" [class.out]="p.stock === 0">
-                  {{ p.stock === 0 ? 'Agotado' : p.stock + ' uds' }}
-                </span>
-              </td>
-            </tr>
-            <tr *ngIf="lowStockList.length === 0">
-              <td colspan="3" class="t-empty">Sin alertas de inventario</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <dynamic-table
+        [columns]="lowStockColumns"
+        [data]="lowStockList$"
+        [isSelectable]="false"
+        [canFilter]="false"
+        [allowXlsExport]="false"
+        [pageSize]="5"
+        [emptyLabel]="'Sin alertas de inventario'"
+      ></dynamic-table>
     </div>
   </div>
 

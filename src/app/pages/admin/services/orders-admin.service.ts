@@ -2,11 +2,12 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subscription, catchError, of, switchMap, tap } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { AdminOrder } from '../../../models/admin.model';
+import { AdminOrder, OrdersInsightsDto, OrdersReportDto } from '../../../models/admin.model';
 import { environment } from '../../../../environments/environment';
 import { RealtimeService } from '../../../services/realtime.service';
 
 interface OrderStatusEvent { id: string; status: string; trackingNumber?: string; }
+interface PaymentProofChangedEvent { orderId?: string; id?: string; proofStatus?: string; paymentProofUrl?: string; }
 
 interface BackendOrderItem { productName: string; productSku: string; price: number; quantity: number; productId?: number; }
 
@@ -19,8 +20,8 @@ interface BackendOrder {
   customerEmail?: string; shipEmail?: string;
   customerPhone?: string; shipPhone?: string;
   notes?: string;
-  subtotal: number; discount: number; shipping: number; total: number;
-  status: string; createdAt: string; paymentMethod: string;
+  subtotal?: number; discount?: number; shipping?: number; total: number;
+  status: string; createdAt: string; paymentMethod?: string;
   address?: string;  shipAddress?: string;
   city?: string;     shipCity?: string;
   state?: string;    shipState?: string;
@@ -28,6 +29,8 @@ interface BackendOrder {
   zipCode?: string;  shipZip?: string;
   trackingNumber?: string;
   paymentProofUrl?: string; paymentProofStatus?: string;
+  paidAt?: string;
+  itemCount?: number;          // campo del endpoint de lista
   items?: BackendOrderItem[];
   timeline?: { label: string; date: string; done: boolean }[];
 }
@@ -45,7 +48,11 @@ function mapOrder(o: BackendOrder): AdminOrder {
       name: i.productName, qty: i.quantity, price: i.price, image: '', sku: i.productSku,
       productId: i.productId,
     })),
-    subtotal: o.subtotal, discount: o.discount, shipping: o.shipping, total: o.total,
+    itemCount:  o.itemCount,
+    subtotal:   o.subtotal  ?? 0,
+    discount:   o.discount  ?? 0,
+    shipping:   o.shipping  ?? 0,
+    total:      o.total,
     status:        o.status as AdminOrder['status'],
     createdAt:     o.createdAt?.slice(0, 10) ?? '',
     address:       o.address  ?? o.shipAddress ?? '',
@@ -85,6 +92,26 @@ export class OrdersAdminService implements OnDestroy {
         );
       })
     );
+
+    // Payment proof changed (approve/reject/upload) → patch in-place
+    this._subs.add(
+      this.rt.on<PaymentProofChangedEvent>('PaymentProofChanged').subscribe(evt => {
+        const id = String(evt.orderId ?? evt.id ?? '');
+        if (!id) return;
+
+        this._data.next(
+          this._data.value.map(o =>
+            o.id === id
+              ? {
+                  ...o,
+                  paymentProofStatus: evt.proofStatus ?? o.paymentProofStatus,
+                  paymentProofUrl: evt.paymentProofUrl ?? o.paymentProofUrl,
+                }
+              : o
+          )
+        );
+      })
+    );
   }
 
   getOrders(): Observable<AdminOrder[]> {
@@ -111,6 +138,21 @@ export class OrdersAdminService implements OnDestroy {
     return this._data.pipe(map(o => o.filter(x => x.status === 'pending').length));
   }
 
+  getReport(days: number = 7, year?: number): Observable<OrdersReportDto> {
+    const params: Record<string, string> = { days: String(days) };
+    if (year != null) params['year'] = String(year);
+    return this.http.get<OrdersReportDto>(`${this.api}/reports`, { params }).pipe(
+      catchError(() => of(null as any))
+    );
+  }
+
+  getInsights(days: number = 30, top: number = 8, customerSort: 'orders' | 'spent' = 'orders'): Observable<OrdersInsightsDto> {
+    const params: Record<string, string> = { days: String(days), top: String(top), customerSort };
+    return this.http.get<OrdersInsightsDto>(`${this.api}/reports/insights`, { params }).pipe(
+      catchError(() => of(null as any))
+    );
+  }
+
   getMyOrders(): Observable<AdminOrder[]> {
     return new Observable(obs => {
       this.http.get<BackendOrder[]>(`${this.api}/my`).pipe(catchError(() => of([] as BackendOrder[])))
@@ -134,6 +176,10 @@ export class OrdersAdminService implements OnDestroy {
     status: string;
   }): Observable<{ id: string }> {
     return this.http.post<{ id: string; total: number }>(`${environment.apiUrl}/sales`, dto).pipe(
+      tap(res => {
+        const local = this.buildLocalSaleOrder(res, dto);
+        if (local) this._data.next([local, ...this._data.value]);
+      }),
       catchError(() => of({ id: '' }))
     );
   }
@@ -273,5 +319,49 @@ export class OrdersAdminService implements OnDestroy {
     } catch {
       // Ignore quota errors. Backend URL (if available) will still be used.
     }
+  }
+
+  private buildLocalSaleOrder(
+    res: { id: string; total: number },
+    dto: {
+      items: { productId: number; quantity: number }[];
+      discountPercent: number;
+      paymentMethod: string;
+      customerName?: string;
+      status: string;
+    },
+  ): AdminOrder | null {
+    if (!res?.id) return null;
+
+    const now = new Date();
+    const dayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const normalizedStatus =
+      dto.status === 'pending' ||
+      dto.status === 'paid' ||
+      dto.status === 'processing' ||
+      dto.status === 'shipped' ||
+      dto.status === 'delivered' ||
+      dto.status === 'cancelled'
+        ? (dto.status as AdminOrder['status'])
+        : 'pending';
+
+    return {
+      id: String(res.id),
+      customerName: dto.customerName ?? 'Cliente mostrador',
+      customerEmail: '',
+      items: [],
+      itemCount: dto.items.reduce((s, i) => s + i.quantity, 0),
+      subtotal: res.total,
+      discount: 0,
+      shipping: 0,
+      total: res.total,
+      status: normalizedStatus,
+      createdAt: dayKey,
+      address: '',
+      city: '',
+      country: '',
+      paymentMethod: dto.paymentMethod,
+      timeline: [],
+    };
   }
 }

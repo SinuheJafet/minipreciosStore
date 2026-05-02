@@ -25,6 +25,7 @@ export interface HubMessage<T = unknown> {
  *   ProductCreated   → { id, name, price, stock, ... }
  *   ProductDeleted   → { id }
  *   OrderStatusChanged → { id, status, trackingNumber? }
+ *   PaymentProofChanged → { orderId, proofStatus, paymentProofUrl? }
  *   InventoryChanged → { productId, stock }
  *   BannerUpdated    → { id, ... }
  *   BannerCreated    → { id, ... }
@@ -104,6 +105,7 @@ export class RealtimeService implements OnDestroy {
       'ProductDeleted',
       'OrderCreated',
       'OrderStatusChanged',
+      'PaymentProofChanged',
       'InventoryChanged',
       'BannerUpdated',
       'BannerCreated',
@@ -111,6 +113,7 @@ export class RealtimeService implements OnDestroy {
       'BannerToggled',
       'BannerChanged',
       'BannersChanged',
+      'PurchaseBatchesChanged',
     ];
 
     for (const event of events) {

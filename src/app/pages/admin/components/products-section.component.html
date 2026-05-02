@@ -128,9 +128,17 @@
               <span class="batch-stat__label">Movimientos</span>
               <span class="batch-stat__value">{{ batchMovements(b.id).length }}</span>
             </div>
+            <div class="batch-stat">
+              <span class="batch-stat__label">Productos</span>
+              <span class="batch-stat__value">{{ b.productCount }}</span>
+            </div>
           </div>
 
           <div class="batch-card__controls">
+            <button class="batch-btn-move" (click)="$event.stopPropagation(); openBatchMovement(b)"
+                    title="Registrar entrada en este lote">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
             <button class="batch-btn-share" (click)="$event.stopPropagation(); shareBatch(b)"
                     [disabled]="isGenerating" title="Compartir / Descargar PDF">
               <svg *ngIf="!isGenerating" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 12 17 16 13"/><line x1="12" y1="17" x2="12" y2="7"/></svg>
@@ -187,7 +195,7 @@
                       {{ p.stock===0 ? 'Agotado' : p.stock+' uds' }}
                     </span>
                   </td>
-                  <td class="bt-value">${{ (p.price * p.stock).toFixed(2) }}</td>
+                  <td class="bt-value">${{ (p.price * m.quantity).toFixed(2) }}</td>
                 </ng-container>
                 <ng-template #noProduct>
                   <td colspan="4" class="bt-cost">Producto no disponible</td>
@@ -488,23 +496,16 @@
       <div class="field">
         <label>Producto <span class="req">*</span></label>
         <div class="mov-ac">
-          <div class="mov-ac__input-wrap" [class.selected]="!!movProductId">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 class="mov-ac__icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input
-              type="text"
-              [(ngModel)]="movProductSearch"
-              (input)="movProductId = null; showMovDropdown = true"
-              (focus)="showMovDropdown = true"
-              (blur)="onMovSearchBlur()"
-              placeholder="Buscar por nombre o SKU…"
-              autocomplete="off"
-              class="mov-ac__input">
-            <button *ngIf="movProductId" class="mov-ac__clear"
-                    (mousedown)="movProductId = null; movProductSearch = ''; showMovDropdown = false" title="Limpiar">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
+          <app-scanner-input
+            [value]="movProductSearch"
+            [error]="movSearchError"
+            [compact]="true"
+            [placeholder]="'Nombre, SKU o escanea con lector USB...'"
+            (valueChange)="onMovSearchChange($event)"
+            (focusInput)="showMovDropdown = true"
+            (blurInput)="onMovSearchBlur()"
+            (enterPressed)="onMovSearchEnter()"
+          ></app-scanner-input>
 
           <div class="mov-ac__dropdown" *ngIf="showMovDropdown && movProductResults.length">
             <button class="mov-ac__item" *ngFor="let p of movProductResults"

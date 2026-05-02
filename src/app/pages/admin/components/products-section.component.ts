@@ -63,12 +63,40 @@ export class ProductsSectionComponent implements OnInit {
 
   get batchesWithStats(): PurchaseBatch[] {
     return this.allBatches.map(b => {
-      const linked = this.productsInBatch(b.id);
-      const totalRevenuePotential = linked.reduce((s, p) => s + p.price * p.stock, 0);
+      const stats = this.computeBatchStats(b.id);
+      const totalRevenuePotential = stats.totalRevenuePotential;
       const roi = b.totalInvested > 0
         ? ((totalRevenuePotential - b.totalInvested) / b.totalInvested) * 100 : 0;
-      return { ...b, productCount: linked.length, totalRevenuePotential, roi };
+      return { ...b, productCount: stats.productCount, totalRevenuePotential, roi };
     });
+  }
+
+  /**
+   * Stats del lote que conservan visibilidad histórica:
+   * - Potencial por movimiento del lote: precio actual * cantidad del movimiento.
+   * - Si el producto ya no existe en catálogo: fallback a unitCost * quantity.
+   */
+  private computeBatchStats(batchId: number): { productCount: number; totalRevenuePotential: number } {
+    const movements = this.batchMovements(batchId);
+    const uniqueProducts = new Set<number>(movements.map(m => m.productId));
+
+    let totalRevenuePotential = 0;
+
+    for (const m of movements) {
+      const product = this.getProduct(m.productId);
+
+      if (product) {
+        totalRevenuePotential += product.price * m.quantity;
+        continue;
+      }
+
+      // Producto ya no disponible: conservar visibilidad con su valor histórico de entrada.
+      if (m.unitCost != null) {
+        totalRevenuePotential += m.unitCost * m.quantity;
+      }
+    }
+
+    return { productCount: uniqueProducts.size, totalRevenuePotential };
   }
 
   /** Movimientos de entrada vinculados a este lote por lotCode */
@@ -97,6 +125,7 @@ export class ProductsSectionComponent implements OnInit {
   movBatchId: number | null = null;
   movUnitCost: number | null = null;
   concepts: string[] = MOVEMENT_CONCEPTS.entrada;
+  movSearchError = '';
 
   get movProductCurrentPrice(): number {
     return this.allProducts.find(p => p.id === this.movProductId)?.price ?? 0;
@@ -308,11 +337,38 @@ export class ProductsSectionComponent implements OnInit {
     this.movQty = 1; this.movNotes = ''; this.movLotCode = '';
     this.showMovModal = true;
   }
+
+  openBatchMovement(batch: PurchaseBatch): void {
+    this.openMovement();
+    this.movType = 'entrada';
+    this.onMovTypeChange();
+    this.movBatchId = batch.id;
+    this.onMovBatchChange(batch.id);
+  }
+
+  onMovSearchChange(value: string): void {
+    this.movProductSearch = value;
+    this.movProductId = null;
+    this.showMovDropdown = true;
+    this.movSearchError = '';
+  }
   closeMovement(): void {
     this.showMovModal = false;
     this.movProductId = null; this.movProductSearch = ''; this.showMovDropdown = false;
     this.movConcept = ''; this.movQty = 1; this.movNotes = ''; this.movLotCode = '';
     this.movBatchId = null; this.movUnitCost = null;
+    this.movSearchError = '';
+  }
+
+  /** Enter en el autocomplete: si hay match exacto de SKU lo selecciona, si hay un único resultado también */
+  onMovSearchEnter(): void {
+    const q = this.movProductSearch.trim().toLowerCase();
+    if (!q) return;
+    const exact = this.allProducts.find(p => p.sku.toLowerCase() === q);
+    if (exact) { this.selectMovProduct(exact); this.movSearchError = ''; return; }
+    const results = this.movProductResults;
+    if (results.length === 1) { this.selectMovProduct(results[0]); this.movSearchError = ''; }
+    else if (results.length === 0) { this.movSearchError = `Sin resultados para "${this.movProductSearch}"`; }
   }
 
   onMovBatchChange(batchId: number | null): void {
@@ -330,7 +386,7 @@ export class ProductsSectionComponent implements OnInit {
   }
 
   batchRevenueTotal(batchId: number): number {
-    return this.productsInBatch(batchId).reduce((s, p) => s + p.price * p.stock, 0);
+    return this.computeBatchStats(batchId).totalRevenuePotential;
   }
   selectMovProduct(p: Product): void {
     this.movProductId = p.id;
