@@ -4,7 +4,7 @@ import { AuthService } from '../../services/auth.service';
 import { OrdersAdminService } from './services/orders-admin.service';
 import { InventoryAdminService } from './services/inventory-admin.service';
 
-export type AdminSection = 'dashboard' | 'pos' | 'orders' | 'products' | 'users' | 'customers' | 'banners' | 'payment-accounts';
+export type AdminSection = 'dashboard' | 'pos' | 'orders' | 'products' | 'kits' | 'users' | 'customers' | 'banners' | 'payment-accounts';
 
 @Component({
   selector: 'app-admin',

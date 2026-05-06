@@ -61,6 +61,11 @@
           <span class="sidebar-badge sidebar-badge--warn" *ngIf="lowStockCount > 0">{{ lowStockCount }}</span>
         </button>
 
+        <button class="sidebar-nav__item" [class.active]="activeSection==='kits'" (click)="navigate('kits')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-4"/></svg>
+          <span>Kits</span>
+        </button>
+
         <div class="sidebar-divider"></div>
 
         <button class="sidebar-nav__item" [class.active]="activeSection==='users'" (click)="navigate('users')">
@@ -95,7 +100,8 @@
       <admin-pos-section        *ngIf="activeSection==='pos'"></admin-pos-section>
       <admin-orders-section     *ngIf="activeSection==='orders'"></admin-orders-section>
       <admin-products-section   *ngIf="activeSection==='products'"></admin-products-section>
-<admin-users-section      *ngIf="activeSection==='users'"></admin-users-section>
+      <admin-kits-section       *ngIf="activeSection==='kits'"></admin-kits-section>
+      <admin-users-section      *ngIf="activeSection==='users'"></admin-users-section>
       <admin-customers-section  *ngIf="activeSection==='customers'"></admin-customers-section>
       <admin-banners-section    *ngIf="activeSection==='banners'"></admin-banners-section>
       <admin-payment-accounts-section *ngIf="activeSection==='payment-accounts'"></admin-payment-accounts-section>

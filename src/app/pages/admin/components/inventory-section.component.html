@@ -50,7 +50,7 @@
 
       <div class="field">
         <label>Producto <span class="req">*</span></label>
-        <select [(ngModel)]="movProductId">
+        <select [(ngModel)]="movProductId" (ngModelChange)="onProductChange()">
           <option [ngValue]="null" disabled>Selecciona un producto…</option>
           <option *ngFor="let p of allList" [ngValue]="p.id">{{ p.name }} — {{ p.sku }} ({{ p.stock }} uds)</option>
         </select>
@@ -61,6 +61,14 @@
         <select [(ngModel)]="movConcept">
           <option value="" disabled>Selecciona un concepto…</option>
           <option *ngFor="let c of concepts" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+
+      <div class="field" *ngIf="(movType === 'salida' || movType === 'ajuste') && movProductId">
+        <label>Lote <small>(opcional)</small></label>
+        <select [(ngModel)]="movBatchId">
+          <option [ngValue]="null">Sin lote específico</option>
+          <option *ngFor="let b of productBatches" [ngValue]="b.id">{{ b.code }}{{ b.supplierName ? ' — ' + b.supplierName : '' }}</option>
         </select>
       </div>
 

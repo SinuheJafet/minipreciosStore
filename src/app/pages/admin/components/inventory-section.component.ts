@@ -3,8 +3,9 @@ import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from '../../../models/product.model';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
-import { MOVEMENT_CONCEPTS } from '../../../models/admin.model';
+import { MOVEMENT_CONCEPTS, PurchaseBatch } from '../../../models/admin.model';
 import { InventoryAdminService } from '../services/inventory-admin.service';
+import { PurchaseBatchesService } from '../services/purchase-batches.service';
 
 type StockFilter = 'all' | 'low' | 'out';
 
@@ -15,7 +16,7 @@ type StockFilter = 'all' | 'low' | 'out';
 })
 export class InventorySectionComponent implements OnInit {
   products!: Observable<Product[]>;
-  constructor(private svc: InventoryAdminService) {}
+  constructor(private svc: InventoryAdminService, private batchSvc: PurchaseBatchesService) {}
 
   stockFilter$ = new BehaviorSubject<StockFilter>('all');
   filtered$!: Observable<Product[]>;
@@ -28,6 +29,9 @@ export class InventorySectionComponent implements OnInit {
   movConcept = '';
   movQty = 1;
   movNotes = '';
+  movBatchId: number | null = null;
+  allBatches: PurchaseBatch[] = [];
+  productBatches: PurchaseBatch[] = [];
   concepts: string[] = MOVEMENT_CONCEPTS.entrada;
   movTypes = [
     { key: 'entrada', label: 'Entrada', icon: '↑' },
@@ -57,6 +61,7 @@ export class InventorySectionComponent implements OnInit {
   ngOnInit(): void {
     this.products = this.svc.getInventory();
     this.products.subscribe(p => this.allList = p);
+    this.batchSvc.getBatches().subscribe(b => this.allBatches = b);
     this.filtered$ = combineLatest([this.products, this.stockFilter$]).pipe(
       map(([prods, f]) => {
         if (f === 'low') return prods.filter(p => p.stock > 0 && p.stock <= 5);
@@ -74,8 +79,16 @@ export class InventorySectionComponent implements OnInit {
   }
 
   openModal(): void { this.showModal = true; this.movType = 'entrada'; this.onTypeChange(); }
-  closeModal(): void { this.showModal = false; this.movQty = 1; this.movNotes = ''; this.movConcept = ''; this.movProductId = null; }
-  onTypeChange(): void { this.concepts = MOVEMENT_CONCEPTS[this.movType]; this.movConcept = ''; }
+  closeModal(): void { this.showModal = false; this.movQty = 1; this.movNotes = ''; this.movConcept = ''; this.movProductId = null; this.movBatchId = null; this.productBatches = []; }
+  onTypeChange(): void { this.concepts = MOVEMENT_CONCEPTS[this.movType]; this.movConcept = ''; this.onProductChange(); }
+
+  onProductChange(): void {
+    if (this.movType === 'entrada') { this.movBatchId = null; this.productBatches = []; return; }
+    const product = this.allList.find(p => p.id === this.movProductId);
+    if (!product) { this.movBatchId = null; this.productBatches = []; return; }
+    this.productBatches = this.allBatches;
+    this.movBatchId = product.batchId ?? null;
+  }
 
   saveMovement(): void {
     if (!this.movProductId || !this.movConcept) return;
@@ -85,9 +98,11 @@ export class InventorySectionComponent implements OnInit {
     const newStock = this.movType === 'entrada' ? prev + this.movQty
                    : this.movType === 'salida'  ? Math.max(0, prev - this.movQty)
                    : this.movQty;
+    const batch = this.movBatchId != null ? this.allBatches.find(b => b.id === this.movBatchId) : undefined;
     this.svc.addMovement({
       productId: product.id, productName: product.name, productSku: product.sku,
       type: this.movType, concept: this.movConcept, quantity: this.movQty,
+      lotCode: batch?.code,
       notes: this.movNotes, previousStock: prev, newStock,
       createdBy: 'Admin', createdAt: new Date().toISOString(),
     });

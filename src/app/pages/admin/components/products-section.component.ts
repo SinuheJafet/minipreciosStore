@@ -127,6 +127,15 @@ export class ProductsSectionComponent implements OnInit {
   concepts: string[] = MOVEMENT_CONCEPTS.entrada;
   movSearchError = '';
 
+  get movSelectableBatches(): PurchaseBatch[] {
+    if (this.movProductId == null) return this.allBatches;
+    const product = this.allProducts.find(p => p.id === this.movProductId);
+    if (!product?.batchId) return this.allBatches;
+    const current = this.allBatches.find(b => b.id === product.batchId);
+    if (!current) return this.allBatches;
+    return [current, ...this.allBatches.filter(b => b.id !== current.id)];
+  }
+
   get movProductCurrentPrice(): number {
     return this.allProducts.find(p => p.id === this.movProductId)?.price ?? 0;
   }
@@ -335,6 +344,7 @@ export class ProductsSectionComponent implements OnInit {
     this.movType = 'entrada';
     this.onMovTypeChange();
     this.movQty = 1; this.movNotes = ''; this.movLotCode = '';
+    this.movBatchId = p?.batchId ?? null;
     this.showMovModal = true;
   }
 
@@ -392,6 +402,10 @@ export class ProductsSectionComponent implements OnInit {
     this.movProductId = p.id;
     this.movProductSearch = `${p.name}  ·  ${p.sku}`;
     this.showMovDropdown = false;
+    if (this.movType !== 'entrada') {
+      this.movBatchId = p.batchId ?? null;
+      this.onMovBatchChange(this.movBatchId);
+    }
   }
   onMovSearchBlur(): void {
     // Pequeño delay para que el mousedown del item dispare antes de cerrar
@@ -400,6 +414,14 @@ export class ProductsSectionComponent implements OnInit {
   onMovTypeChange(): void {
     this.concepts = MOVEMENT_CONCEPTS[this.movType];
     this.movConcept = '';
+    if (this.movType === 'entrada') {
+      this.movBatchId = null;
+      this.movLotCode = '';
+      return;
+    }
+    const product = this.allProducts.find(p => p.id === this.movProductId);
+    this.movBatchId = product?.batchId ?? this.movBatchId;
+    this.onMovBatchChange(this.movBatchId);
   }
   saveMovement(): void {
     if (!this.movProductId || !this.movConcept) return;
@@ -604,26 +626,120 @@ export class ProductsSectionComponent implements OnInit {
     });
   }
 
-  /* ── Download PDF (bulk) ── */
+  /* ── Build imágenes individuales (bulk) ── */
+  private async buildBulkImages(products: Product[]): Promise<{ blob: Blob; name: string }[]> {
+    const results: { blob: Blob; name: string }[] = [];
+    for (const p of products) {
+      const img  = p.images[0] ? await this.loadImage(p.images[0]) : null;
+      const blob = await new Promise<Blob>(res => this.renderCanvas(p, img).toBlob(b => res(b!), 'image/png', 0.96));
+      results.push({ blob, name: `${this.safeName(p.name)}-miniprecios.png` });
+    }
+    return results;
+  }
+
+  /* ── Descargar imágenes (bulk) — descarga una a una ── */
   async downloadBulkPDF(): Promise<void> {
     const selected = this.selectedProducts.filter(p => p.stock > 0);
     if (!selected.length || this.isGenerating) return;
     this.isGenerating = true;
     try {
-      const blob = await this.buildPDF(selected);
-      this.triggerDownload(blob, `productos-miniprecios-${selected.length}.pdf`);
+      const images = await this.buildBulkImages(selected);
+      for (const { blob, name } of images) {
+        this.triggerDownload(blob, name);
+        // pequeño delay entre descargas para que el navegador las procese
+        await new Promise(r => setTimeout(r, 200));
+      }
     } finally { this.isGenerating = false; }
   }
 
-  /* ── Share via WhatsApp / Web Share API (bulk) ── */
+  /* ── Generar galería de imágenes para compartir ── */
+  showBulkGallery = false;
+  bulkGalleryItems: { url: string; previewUrl: string; name: string; product: Product }[] = [];
+  bulkProgress = 0;  // 0-100 para mostrar progreso
+
   async shareBulkWhatsApp(): Promise<void> {
     const selected = this.selectedProducts.filter(p => p.stock > 0);
     if (!selected.length || this.isGenerating) return;
     this.isGenerating = true;
+    this.bulkProgress = 0;
+    // Limpiar URLs anteriores
+    this.bulkGalleryItems.forEach(i => URL.revokeObjectURL(i.url));
+    this.bulkGalleryItems = [];
     try {
-      const blob = await this.buildPDF(selected);
-      await this.shareOrDownload(blob, `productos-miniprecios-${selected.length}.pdf`);
-    } finally { this.isGenerating = false; }
+      const items: { url: string; previewUrl: string; name: string; product: Product }[] = [];
+      for (let i = 0; i < selected.length; i++) {
+        const p   = selected[i];
+        const img = p.images[0] ? await this.loadImage(p.images[0]) : null;
+        const blob = await new Promise<Blob>(res =>
+          this.renderCanvas(p, img).toBlob(b => res(b!), 'image/png', 0.96));
+        items.push({
+          url: URL.createObjectURL(blob),
+          previewUrl: p.images?.[0] || URL.createObjectURL(blob),
+          name: `${this.safeName(p.name)}-miniprecios.png`,
+          product: p,
+        });
+        this.bulkProgress = Math.round(((i + 1) / selected.length) * 100);
+        // Ceder control al navegador cada 5 imágenes para no bloquear el hilo
+        if ((i + 1) % 5 === 0) await new Promise(r => setTimeout(r, 0));
+      }
+      this.bulkGalleryItems = items;
+      this.bulkBatchIndex  = 0;
+      this.showBulkGallery = true;
+    } finally { this.isGenerating = false; this.bulkProgress = 0; }
+  }
+
+  closeBulkGallery(): void {
+    this.bulkGalleryItems.forEach(i => URL.revokeObjectURL(i.url));
+    this.bulkGalleryItems = [];
+    this.showBulkGallery = false;
+  }
+
+  onBulkPreviewError(event: Event, fallbackUrl: string): void {
+    const img = event.target as HTMLImageElement | null;
+    if (!img) return;
+    if (img.dataset['fallbackApplied'] === '1') return;
+    img.dataset['fallbackApplied'] = '1';
+    img.src = fallbackUrl;
+  }
+
+  async shareGalleryItem(item: { url: string; previewUrl: string; name: string }): Promise<void> {
+    const res  = await fetch(item.url);
+    const blob = await res.blob();
+    const file = new File([blob], item.name, { type: 'image/png' });
+    try { await navigator.share({ files: [file], title: 'miniprecios' }); }
+    catch (e: any) { if (e?.name !== 'AbortError') this.triggerDownload(blob, item.name); }
+  }
+
+  bulkBatchSize  = 5;
+  bulkBatchIndex = 0; // índice del siguiente lote a compartir
+  get bulkBatchTotal(): number  { return Math.ceil(this.bulkGalleryItems.length / this.bulkBatchSize); }
+  get bulkCurrentBatch(): number { return Math.floor(this.bulkBatchIndex / this.bulkBatchSize) + 1; }
+  get bulkHasMore(): boolean    { return this.bulkBatchIndex < this.bulkGalleryItems.length; }
+  get bulkNextEnd(): number     { return Math.min(this.bulkBatchIndex + this.bulkBatchSize, this.bulkGalleryItems.length); }
+
+  /** Comparte el siguiente lote de 5 — llamado desde el botón (gesto válido) */
+  async shareNextBatch(): Promise<void> {
+    if (!this.bulkHasMore) return;
+    const batch = this.bulkGalleryItems.slice(this.bulkBatchIndex, this.bulkBatchIndex + this.bulkBatchSize);
+    try {
+      const files = await Promise.all(batch.map(async item => {
+        const blob = await (await fetch(item.url)).blob();
+        return new File([blob], item.name, { type: 'image/png' });
+      }));
+      await navigator.share({ files, title: 'miniprecios' });
+      // Solo avanza si el share fue exitoso (no cancelado)
+      this.bulkBatchIndex += this.bulkBatchSize;
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        // Web Share no soportado → descargar el lote
+        for (const item of batch) {
+          const blob = await (await fetch(item.url)).blob();
+          this.triggerDownload(blob, item.name);
+          await new Promise(r => setTimeout(r, 150));
+        }
+        this.bulkBatchIndex += this.bulkBatchSize;
+      }
+    }
   }
 
   /* ── Core: build multi-page PDF ── */
@@ -670,24 +786,25 @@ export class ProductsSectionComponent implements OnInit {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /* ── Wraps text into up to maxLines lines, truncating with … ── */
-  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number): string[] {
-    const words = text.split(' ');
+  /* ── Wraps text in lines; optionally truncates when maxLines is provided ── */
+  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines?: number): string[] {
+    const words = text.split(' ').filter(Boolean);
     const lines: string[] = [];
+    const limited = !!maxLines && maxLines > 0;
     let current = '';
     for (const word of words) {
       const test = current ? current + ' ' + word : word;
       if (ctx.measureText(test).width <= maxW) {
         current = test;
       } else {
-        if (lines.length + 1 >= maxLines) {
+        if (limited && lines.length + 1 >= maxLines!) {
           // Last allowed line — truncate
           while (current && ctx.measureText(current + '… ' + word).width > maxW)
             current = current.slice(0, -1).trimEnd();
           lines.push((current + '…').trim());
           return lines;
         }
-        lines.push(current);
+        if (current) lines.push(current);
         current = word;
       }
     }
@@ -695,22 +812,27 @@ export class ProductsSectionComponent implements OnInit {
     return lines;
   }
 
-  /* ── Canvas renderer — diseño vertical portrait que coincide con el card del modal ── */
+  /* ── Canvas renderer — card portrait para compartir (se genera al vuelo en blob:) ── */
   private renderCanvas(p: Product, productImg: HTMLImageElement | null): HTMLCanvasElement {
     const cpCount  = p.competitorPrices?.length ?? 0;
     const hasDesc  = !!(p.description?.trim());
     const isLow    = p.stock > 0 && p.stock <= 5;
-    const W        = 800;
-    const HDR_H    = 54;
-    const IMG_H    = 380;
-    const FTR_H    = 42;
-    const PAD      = 30;
-    const DESC_H   = hasDesc ? 68 : 0;   // max 3 lines × 20px + 8px gap
+    const W        = 1080;
+    const HDR_H    = 72;
+    const IMG_H    = 620;
+    const FTR_H    = 56;
+    const PAD      = 40;
+    const px       = 42;
+    const rw       = W - px * 2;
+    const measureCtx = document.createElement('canvas').getContext('2d')!;
+    measureCtx.font = '16px system-ui,sans-serif';
+    const descLines = hasDesc ? this.wrapText(measureCtx, p.description!, rw) : [];
+    const DESC_H   = descLines.length ? (descLines.length * 24 + 8) : 0;
     const STOCK_H  = isLow   ? 32 : 0;   // urgency badge
     // textH debe coincidir EXACTAMENTE con los cy+= del dibujo:
-    // PAD + brand(26) + name(40) + desc(DESC_H) + price(58) + stock(STOCK_H) + divider(20)
+    // PAD + brand(30) + gap(18) + name(52) + desc(DESC_H dinamico) + price(68) + stock(STOCK_H) + divider(24)
     // + competitors: title(16) + rows(46 c/u) + PAD
-    const textH = PAD + 26 + 40 + DESC_H + 58 + STOCK_H + 20
+    const textH = PAD + 30 + 18 + 52 + DESC_H + 68 + STOCK_H + 24
                 + (cpCount > 0 ? 16 + cpCount * 46 : 0)
                 + PAD;
     const H = HDR_H + IMG_H + textH + FTR_H;
@@ -729,28 +851,28 @@ export class ProductsSectionComponent implements OnInit {
     /* ── Header bar (purple) ── */
     ctx.fillStyle = '#7c3aed'; ctx.fillRect(0, 0, W, HDR_H);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px system-ui,sans-serif';
-    ctx.fillText('⚡ miniprecios', 24, HDR_H / 2 + 7);
+    ctx.font = 'bold 22px system-ui,sans-serif';
+    ctx.fillText('⚡ miniprecios', 30, HDR_H / 2 + 8);
     if (p.badge) {
       const bs = p.badge.toUpperCase();
-      ctx.font = 'bold 11px system-ui,sans-serif';
-      const bw = ctx.measureText(bs).width + 18;
+      ctx.font = 'bold 14px system-ui,sans-serif';
+      const bw = ctx.measureText(bs).width + 24;
       ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.beginPath(); rr(W - 24 - bw, 14, bw, 24, 5); ctx.fill();
-      ctx.fillStyle = '#ffffff'; ctx.fillText(bs, W - 24 - bw + 9, 31);
+      ctx.beginPath(); rr(W - 30 - bw, 18, bw, 30, 6); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(bs, W - 30 - bw + 12, 38);
     }
 
-    /* ── Imagen del producto (contain — se ve completa, sin recorte ni degradado) ── */
+    /* ── Imagen del producto (cover para evitar efecto barra horizontal) ── */
     if (productImg) {
-      // Fondo neutro para las áreas sin imagen (letterbox)
-      ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, HDR_H, W, IMG_H);
       const iw = productImg.naturalWidth  || productImg.width  || 1;
       const ih = productImg.naturalHeight || productImg.height || 1;
-      // contain: escalar para que QUEPA completa dentro del área
+      // contain: escalar para que la imagen completa quepa sin recorte
       const scale = Math.min(W / iw, IMG_H / ih);
       const dw = iw * scale, dh = ih * scale;
       const dx = (W - dw) / 2;
       const dy = HDR_H + (IMG_H - dh) / 2;
+      // fondo para el área de imagen (blanco)
+      ctx.fillStyle = '#f5f3ff'; ctx.fillRect(0, HDR_H, W, IMG_H);
       ctx.drawImage(productImg, dx, dy, dw, dh);
     } else {
       // Placeholder con gradiente
@@ -764,50 +886,49 @@ export class ProductsSectionComponent implements OnInit {
     }
 
     /* ── Contenido de texto ── */
-    const px = 32;
-    const rw = W - px * 2;
     let cy = HDR_H + IMG_H + PAD;
 
     // Marca · Volumen
-    ctx.fillStyle = '#64748b'; ctx.font = '13px system-ui,sans-serif';
+    ctx.fillStyle = '#64748b'; ctx.font = '17px system-ui,sans-serif';
     ctx.fillText(`${p.brand}${p.volume ? '  ·  ' + p.volume : ''}`, px, cy); cy += 26;
+    // Gap extra para que el nombre no se encime con la linea superior.
+    cy += 18;
 
     // Nombre del producto
-    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 26px system-ui,sans-serif';
+    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 38px system-ui,sans-serif';
     let nameText = p.name;
     while (ctx.measureText(nameText).width > rw && nameText.length > 5)
       nameText = nameText.slice(0, -1);
     if (nameText !== p.name) nameText += '…';
-    ctx.fillText(nameText, px, cy); cy += 40;
+    ctx.fillText(nameText, px, cy); cy += 52;
 
-    // Descripción (máx 2 líneas)
+    // Descripción completa
     if (hasDesc) {
-      ctx.fillStyle = '#64748b'; ctx.font = '13px system-ui,sans-serif';
-      const descLines = this.wrapText(ctx, p.description!, rw, 3);
-      descLines.forEach(l => { ctx.fillText(l, px, cy); cy += 20; });
+      ctx.fillStyle = '#64748b'; ctx.font = '16px system-ui,sans-serif';
+      descLines.forEach(l => { ctx.fillText(l, px, cy); cy += 24; });
       cy += 8;
     }
 
     // Precio principal
     const priceStr = `$${p.price.toFixed(2)}`;
-    ctx.fillStyle = '#7c3aed'; ctx.font = 'bold 36px system-ui,sans-serif';
+    ctx.fillStyle = '#7c3aed'; ctx.font = 'bold 52px system-ui,sans-serif';
     ctx.fillText(priceStr, px, cy + 28);
     if (p.originalPrice) {
       const origStr = `$${p.originalPrice.toFixed(2)}`;
       const ox = px + ctx.measureText(priceStr).width + 14;
-      ctx.fillStyle = '#94a3b8'; ctx.font = '17px system-ui,sans-serif';
+      ctx.fillStyle = '#94a3b8'; ctx.font = '24px system-ui,sans-serif';
       ctx.fillText(origStr, ox, cy + 24);
       const ow = ctx.measureText(origStr).width;
       ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
       ctx.moveTo(ox, cy + 16); ctx.lineTo(ox + ow, cy + 16); ctx.stroke();
       const pct = `-${this.discountPct(p)}%`;
-      ctx.font = 'bold 11px system-ui,sans-serif';
+      ctx.font = 'bold 13px system-ui,sans-serif';
       const pw = ctx.measureText(pct).width + 14;
       ctx.fillStyle = '#d1fae5';
       ctx.beginPath(); rr(ox + ow + 10, cy + 10, pw, 20, 5); ctx.fill();
       ctx.fillStyle = '#059669'; ctx.fillText(pct, ox + ow + 17, cy + 24);
     }
-    cy += 58;
+    cy += 68;
 
     // Badge de urgencia (stock bajo)
     if (isLow) {
@@ -825,7 +946,7 @@ export class ProductsSectionComponent implements OnInit {
     // Divisor
     ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(px, cy); ctx.lineTo(W - px, cy); ctx.stroke();
-    cy += 20;
+    cy += 24;
 
     // Precios de competidores
     if (cpCount > 0) {
@@ -860,7 +981,7 @@ export class ProductsSectionComponent implements OnInit {
     ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, footerY, W, FTR_H);
     ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, footerY); ctx.lineTo(W, footerY); ctx.stroke();
-    ctx.fillStyle = '#94a3b8'; ctx.font = '12px system-ui,sans-serif';
+    ctx.fillStyle = '#94a3b8'; ctx.font = '14px system-ui,sans-serif';
     ctx.fillText(
     //miniprecios.com  ·
       `  

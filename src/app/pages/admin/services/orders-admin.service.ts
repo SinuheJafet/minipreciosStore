@@ -2,7 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subscription, catchError, of, switchMap, tap } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { AdminOrder, OrdersInsightsDto, OrdersReportDto } from '../../../models/admin.model';
+import { AdminOrder, OrderPayment, OrdersInsightsDto, OrdersReportDto } from '../../../models/admin.model';
 import { environment } from '../../../../environments/environment';
 import { RealtimeService } from '../../../services/realtime.service';
 
@@ -30,6 +30,9 @@ interface BackendOrder {
   trackingNumber?: string;
   paymentProofUrl?: string; paymentProofStatus?: string;
   paidAt?: string;
+  paymentStatus?: string;
+  amountPaid?: number;
+  payments?: OrderPayment[];
   itemCount?: number;          // campo del endpoint de lista
   items?: BackendOrderItem[];
   timeline?: { label: string; date: string; done: boolean }[];
@@ -38,6 +41,13 @@ interface PagedOrderResponse { data: BackendOrder[]; total: number; page: number
 interface LocalPaymentProof { url: string; status: string; }
 
 function mapOrder(o: BackendOrder): AdminOrder {
+  const amountPaid = o.amountPaid ?? 0;
+  const total = o.total ?? 0;
+  const amountPending = Math.max(0, total - amountPaid);
+  const paymentStatus: AdminOrder['paymentStatus'] =
+    (o.paymentStatus as AdminOrder['paymentStatus']) ??
+    (amountPaid >= total && total > 0 ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid');
+
   return {
     id:            o.id.toString(),
     customerName:  o.customerName  ?? o.shipFullName  ?? '',
@@ -52,8 +62,12 @@ function mapOrder(o: BackendOrder): AdminOrder {
     subtotal:   o.subtotal  ?? 0,
     discount:   o.discount  ?? 0,
     shipping:   o.shipping  ?? 0,
-    total:      o.total,
+    total,
     status:        o.status as AdminOrder['status'],
+    paymentStatus,
+    amountPaid,
+    amountPending,
+    payments:      o.payments,
     createdAt:     o.createdAt?.slice(0, 10) ?? '',
     address:       o.address  ?? o.shipAddress ?? '',
     city:          o.city     ?? o.shipCity    ?? '',
@@ -226,6 +240,14 @@ export class OrdersAdminService implements OnDestroy {
           })
         )
       ),
+      catchError(() => of(false))
+    );
+  }
+
+  addPayment(orderId: string, dto: { amount: number; method: string; notes?: string }): Observable<boolean> {
+    return this.http.post(`${this.api}/${orderId}/payments`, dto).pipe(
+      map(() => true),
+      tap(() => this.load()),
       catchError(() => of(false))
     );
   }

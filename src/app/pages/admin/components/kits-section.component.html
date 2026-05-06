@@ -1,0 +1,175 @@
+<div class="kits-section">
+
+  <!-- Header -->
+  <div class="section-header">
+    <div class="section-header__left">
+      <h2 class="section-title">Kits / Bundles</h2>
+      <p class="section-subtitle">Gestiona los kits de productos con precios especiales</p>
+    </div>
+    <button class="btn-primary" (click)="openCreate()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nueva kit
+    </button>
+  </div>
+
+  <!-- Table -->
+  <dynamic-table
+    [columns]="columns"
+    [data]="kits$"
+    [isSelectable]="false"
+    [canFilter]="true"
+    [filterTitle]="'Buscar kit por nombre o SKU…'"
+    [pageSize]="10"
+    [emptyLabel]="'No hay kits configurados'"
+  ></dynamic-table>
+
+</div>
+
+<!-- ── Modal: Crear / Editar kit ── -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="kit-modal" (click)="$event.stopPropagation()">
+
+    <div class="kit-modal__header">
+      <h3>{{ isEdit ? 'Editar kit' : 'Nueva kit' }}</h3>
+      <button class="btn-close" (click)="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="kit-modal__body">
+
+      <!-- Datos básicos -->
+      <div class="form-section">
+        <h4 class="form-section__title">Información general</h4>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Nombre <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="form.name" placeholder="Ej. Kit Cuidado Facial">
+          </div>
+          <div class="field field--sm">
+            <label>SKU <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="form.sku" placeholder="KIT-001">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Descripción</label>
+          <textarea [(ngModel)]="form.description" rows="2" placeholder="Descripción breve del kit…"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Precio de kit <span class="req">*</span></label>
+            <div class="input-prefix">
+              <span>$</span>
+              <input type="number" [(ngModel)]="form.price" min="0" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+          <div class="field">
+            <label>Precio original</label>
+            <div class="input-prefix">
+              <span>$</span>
+              <input type="number" [(ngModel)]="form.originalPrice" min="0" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Imagen URL</label>
+            <input type="url" [(ngModel)]="form.imageUrl" placeholder="https://…">
+          </div>
+          <div class="field field--sm">
+            <label>Badge</label>
+            <input type="text" [(ngModel)]="form.badge" placeholder="Ej. Oferta, Nuevo">
+          </div>
+        </div>
+
+        <div class="field field--toggle">
+          <label class="toggle-label">
+            <input type="checkbox" [(ngModel)]="form.isActive">
+            <span class="toggle-switch"></span>
+            Activo
+          </label>
+        </div>
+      </div>
+
+      <!-- Componentes del kit -->
+      <div class="form-section">
+        <div class="form-section__head">
+          <h4 class="form-section__title">Componentes del kit</h4>
+          <button class="btn-add" type="button" (click)="addItem()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Agregar producto
+          </button>
+        </div>
+
+        <div class="kit-items" *ngIf="form.items.length; else noItems">
+          <div class="kit-item-row" *ngFor="let item of form.items; let i = index; trackBy: trackByIndex">
+            <div class="field field--flex">
+              <label>Producto</label>
+              <select [(ngModel)]="item.productId">
+                <option [ngValue]="null" disabled>Seleccionar producto…</option>
+                <option *ngFor="let p of allProducts" [ngValue]="p.id">
+                  {{ p.name }} ({{ p.sku }}) — ${{ p.price.toFixed(2) }}
+                </option>
+              </select>
+            </div>
+            <div class="field field--qty">
+              <label>Cant.</label>
+              <input type="number" [(ngModel)]="item.quantity" min="1" step="1">
+            </div>
+            <button class="btn-remove-item" type="button" (click)="removeItem(i)" title="Quitar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <ng-template #noItems>
+          <p class="no-items-hint">No hay componentes. Agrega al menos un producto al kit.</p>
+        </ng-template>
+
+        <!-- Comparativa de precios -->
+        <div class="kit-price-summary" *ngIf="form.items.length">
+          <div class="kps-row">
+            <span class="kps-label">Precio de componentes:</span>
+            <span class="kps-value kps-value--components">${{ kitTotal(form.items) | number:'1.2-2' }}</span>
+          </div>
+          <div class="kps-row">
+            <span class="kps-label">Precio de kit:</span>
+            <span class="kps-value kps-value--kit">${{ (form.price ?? 0) | number:'1.2-2' }}</span>
+          </div>
+          <div class="kps-row kps-row--savings" *ngIf="form.price != null && kitTotal(form.items) > form.price">
+            <span class="kps-label">Ahorro para el cliente:</span>
+            <span class="kps-value kps-value--savings">
+              ${{ (kitTotal(form.items) - (form.price ?? 0)) | number:'1.2-2' }}
+              ({{ ((kitTotal(form.items) - (form.price ?? 0)) / kitTotal(form.items) * 100) | number:'1.0-0' }}% dto.)
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="kit-modal__footer">
+      <button class="btn-cancel" (click)="closeModal()">Cancelar</button>
+      <button class="btn-save" (click)="saveKit()" [disabled]="!isFormValid">
+        {{ isEdit ? 'Guardar cambios' : 'Crear kit' }}
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Modal: Confirmar eliminación ── -->
+<div class="modal-overlay modal-overlay--danger" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+  <div class="confirm-modal" (click)="$event.stopPropagation()">
+    <h3>Eliminar kit</h3>
+    <p>¿Confirmas que deseas eliminar el kit <strong>{{ deletingKit?.name }}</strong>? Esta acción no se puede deshacer.</p>
+    <div class="confirm-modal__actions">
+      <button class="btn-cancel" (click)="cancelDelete()">Cancelar</button>
+      <button class="btn-danger" (click)="doDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>

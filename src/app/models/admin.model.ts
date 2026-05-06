@@ -1,16 +1,30 @@
+export interface OrderPayment {
+  id: number;
+  amount: number;
+  method: string;
+  notes?: string;
+  proofUrl?: string;
+  recordedAt: string;
+  recordedByName: string;
+}
+
 export interface AdminOrder {
   id: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
   notes?: string;
-  items: { name: string; qty: number; price: number; image: string; sku: string; productId?: number; }[];
+  items: { name: string; qty: number; price: number; image: string; sku: string; productId?: number; batchId?: number; batchCode?: string; }[];
   itemCount?: number;    // del endpoint de lista cuando no vienen los items completos
   subtotal: number;
   discount: number;
   shipping: number;
   total: number;
   status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentStatus?: 'unpaid' | 'partial' | 'paid';
+  amountPaid?: number;
+  amountPending?: number;
+  payments?: OrderPayment[];
   createdAt: string;
   address: string;
   city: string;
@@ -62,7 +76,9 @@ export interface AdminStats {
 }
 
 export interface SaleCartItem {
-  productId: number;
+  itemType?: 'product' | 'kit';
+  productId?: number;
+  kitId?: number;
   productName: string;
   productSku: string;
   productImage: string;

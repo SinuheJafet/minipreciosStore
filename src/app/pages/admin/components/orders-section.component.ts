@@ -1,12 +1,15 @@
 import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, combineLatest, firstValueFrom } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { ColumnSource } from '../../../shared/components/dynamic-table/dynamic-table.entities';
 import { AdminOrder } from '../../../models/admin.model';
 import { OrdersAdminService } from '../services/orders-admin.service';
 import { InventoryAdminService } from '../services/inventory-admin.service';
 import { Product } from '../../../models/product.model';
 import { ProductsAdminService } from '../services/products-admin.service';
+import { environment } from '../../../../environments/environment';
 
 type OrderStatus = 'all' | 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -30,7 +33,12 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
 })
 export class OrdersSectionComponent implements OnInit {
   orders!: Observable<AdminOrder[]>;
-  constructor(private svc: OrdersAdminService, private invSvc: InventoryAdminService, private prodSvc: ProductsAdminService) {}
+  constructor(
+    private svc: OrdersAdminService,
+    private invSvc: InventoryAdminService,
+    private prodSvc: ProductsAdminService,
+    private http: HttpClient,
+  ) {}
 
   private statusFilter$ = new BehaviorSubject<OrderStatus>('all');
   filtered$!: Observable<AdminOrder[]>;
@@ -41,13 +49,25 @@ export class OrdersSectionComponent implements OnInit {
   trackingInput = '';
   allProducts: Product[] = [];
   editingItems = false;
-  editItems: Array<{ name: string; qty: number; price: number; image: string; sku: string; productId?: number }> = [];
+  editItems: Array<{ name: string; qty: number; price: number; originalPrice: number; discountPct: number; image: string; sku: string; productId?: number; batchId?: number; batchCode?: string }> = [];
+  productBatches: Record<number, Array<{ id: number; code: string; supplierName?: string; entryDate: string; unitCost?: number }>> = {};
   itemSearch = '';
   itemResults: Product[] = [];
   showItemDropdown = false;
   savingItems = false;
   orderScanError = '';
   sharingTicket = false;
+
+  // Payment form state
+  showPaymentModal = false;
+  paymentForm = { amount: null as number | null, method: 'cash', notes: '' };
+  savingPayment = false;
+  readonly paymentMethods = [
+    { value: 'cash',          label: 'Efectivo' },
+    { value: 'bank_transfer', label: 'Transferencia' },
+    { value: 'card',          label: 'Tarjeta' },
+    { value: 'paypal',        label: 'PayPal' },
+  ];
 
   readonly statusLabels = STATUS_LABELS;
   readonly tabs: { key: OrderStatus; label: string }[] = [
@@ -382,9 +402,48 @@ export class OrdersSectionComponent implements OnInit {
 
   startEditItems(): void {
     if (!this.selectedOrder) return;
-    this.editItems = this.selectedOrder.items.map(i => ({ ...i }));
+    this.editItems = this.selectedOrder.items.map(i => {
+      const catalogPrice = this.allProducts.find(p => p.id === i.productId || p.sku === i.sku)?.price ?? i.price;
+      const discountPct = catalogPrice > 0 && i.price < catalogPrice
+        ? Number(((1 - i.price / catalogPrice) * 100).toFixed(1))
+        : 0;
+      return { ...i, originalPrice: catalogPrice, discountPct, batchId: i.batchId, batchCode: i.batchCode };
+    });
     this.editingItems = true;
     this.itemSearch = '';
+    this.productBatches = {};
+    // Cargar lotes disponibles por producto (PEPS)
+    const productIds = [...new Set(this.editItems.filter(i => i.productId).map(i => i.productId!))];
+    productIds.forEach(pid => this.loadProductBatches(pid));
+  }
+
+  loadProductBatches(productId: number): void {
+    this.http.get<any[]>(`${environment.apiUrl}/products/${productId}/batches`)
+      .pipe(catchError(() => of([])))
+      .subscribe(batches => {
+        this.productBatches = {
+          ...this.productBatches,
+          [productId]: batches.map(b => ({
+            id: b.id, code: b.code, supplierName: b.supplierName,
+            entryDate: b.entryDate?.substring(0, 10) ?? '', unitCost: b.unitCost,
+          })),
+        };
+      });
+  }
+
+  setItemBatch(i: number, batchId: number | null): void {
+    const item = this.editItems[i];
+    if (!item.productId) return;
+    const batch = batchId ? (this.productBatches[item.productId] ?? []).find(b => b.id === batchId) : null;
+    item.batchId = batchId ?? undefined;
+    item.batchCode = batch?.code;
+    // Persistir inmediatamente via PATCH
+    if (this.selectedOrder) {
+      this.http.patch(
+        `${environment.apiUrl}/orders/${this.selectedOrder.id}/items/${(this.selectedOrder.items.find(si => si.productId === item.productId)?.productId ?? 0)}/batch`,
+        { batchId }
+      ).pipe(catchError(() => of(null))).subscribe();
+    }
   }
 
   cancelEditItems(): void {
@@ -406,15 +465,40 @@ export class OrdersSectionComponent implements OnInit {
     else if (results.length === 0) { this.orderScanError = `Sin resultados para "${this.itemSearch}"`; }
   }
 
+  stockForEdit(item: { productId?: number; sku: string }): number {
+    const p = this.allProducts.find(x => x.id === item.productId || x.sku === item.sku);
+    return p?.stock ?? 0;
+  }
+
   addToEdit(product: Product): void {
     const existing = this.editItems.find(i => i.productId === product.id || i.sku === product.sku);
     if (existing) {
-      existing.qty++;
+      if (existing.qty < product.stock) existing.qty++;
     } else {
-      this.editItems.push({ name: product.name, qty: 1, price: product.price, image: product.images[0] ?? '', sku: product.sku, productId: product.id });
+      if (product.stock <= 0) return;
+      this.editItems.push({
+        name: product.name, qty: 1, price: product.price,
+        originalPrice: product.price, discountPct: 0,
+        image: product.images[0] ?? '', sku: product.sku, productId: product.id,
+      });
     }
     this.itemSearch = '';
     this.showItemDropdown = false;
+    this.orderScanError = '';
+  }
+
+  onItemDiscountChange(i: number): void {
+    const item = this.editItems[i];
+    const pct = Math.min(100, Math.max(0, item.discountPct ?? 0));
+    item.discountPct = pct;
+    item.price = Number((item.originalPrice * (1 - pct / 100)).toFixed(2));
+  }
+
+  onItemPriceChange(i: number): void {
+    const item = this.editItems[i];
+    if (item.originalPrice > 0 && item.price >= 0) {
+      item.discountPct = Number(((1 - item.price / item.originalPrice) * 100).toFixed(1));
+    }
   }
 
   removeFromEdit(i: number): void { this.editItems.splice(i, 1); }
@@ -422,7 +506,12 @@ export class OrdersSectionComponent implements OnInit {
   changeQty(i: number, delta: number): void {
     const item = this.editItems[i];
     const next = item.qty + delta;
-    if (next <= 0) { this.editItems.splice(i, 1); } else { item.qty = next; }
+    if (next <= 0) {
+      this.editItems.splice(i, 1);
+    } else {
+      const stock = this.stockForEdit(item);
+      item.qty = stock > 0 ? Math.min(next, stock) : next;
+    }
   }
 
   saveItems(): void {
@@ -447,4 +536,38 @@ export class OrdersSectionComponent implements OnInit {
   }
 
   onItemSearchBlur(): void { setTimeout(() => { this.showItemDropdown = false; }, 180); }
+
+  // ── Payment methods ──────────────────────────────────────────────
+  openAddPayment(): void {
+    this.paymentForm = { amount: null, method: 'cash', notes: '' };
+    this.showPaymentModal = true;
+  }
+
+  closePaymentModal(): void {
+    this.showPaymentModal = false;
+  }
+
+  canAddPayment(): boolean {
+    return !!this.selectedOrder &&
+      this.selectedOrder.status !== 'cancelled' &&
+      (this.selectedOrder.amountPending ?? 0) > 0;
+  }
+
+  savePayment(): void {
+    if (!this.selectedOrder || !this.paymentForm.amount) return;
+    this.savingPayment = true;
+    this.svc.addPayment(this.selectedOrder.id, {
+      amount: this.paymentForm.amount,
+      method: this.paymentForm.method,
+      notes: this.paymentForm.notes.trim() || undefined,
+    }).subscribe(ok => {
+      this.savingPayment = false;
+      if (ok) {
+        this.closePaymentModal();
+        if (this.selectedOrder) {
+          this.openDetail(this.selectedOrder);
+        }
+      }
+    });
+  }
 }

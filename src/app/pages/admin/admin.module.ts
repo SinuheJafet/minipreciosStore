@@ -12,6 +12,7 @@ import { UsersSectionComponent } from './components/users-section.component';
 import { CustomersSectionComponent } from './components/customers-section.component';
 import { BannersSectionComponent } from './components/banners-section.component';
 import { PaymentAccountsSectionComponent } from './components/payment-accounts-section.component';
+import { KitsSectionComponent } from './components/kits-section.component';
 import { DynamicTableModule } from '../../shared/components/dynamic-table/dynamic-table.module';
 import { ScannerInputComponent } from '../../shared/components/scanner-input/scanner-input.component';
 
@@ -26,6 +27,7 @@ import { ScannerInputComponent } from '../../shared/components/scanner-input/sca
     CustomersSectionComponent,
     BannersSectionComponent,
     PaymentAccountsSectionComponent,
+    KitsSectionComponent,
     ScannerInputComponent,
   ],
   imports: [

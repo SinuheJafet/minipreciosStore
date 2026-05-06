@@ -30,20 +30,24 @@
       ></app-scanner-input>
 
       <div class="pos-grid">
-        <button class="pos-product-card" *ngFor="let p of filtered" (click)="addToCart(p)" [disabled]="p.stock === 0 || cartQty(p.id) >= p.stock"
-                [class.in-cart]="cartQty(p.id) > 0" [class.at-max]="cartQty(p.id) >= p.stock && p.stock > 0">
+        <button class="pos-product-card"
+                *ngFor="let p of filtered"
+                (click)="addCatalogItemToCart(p)"
+                [disabled]="p.stock === 0 || cartQty(p.itemType, p.id) >= p.stock"
+                [class.in-cart]="cartQty(p.itemType, p.id) > 0"
+                [class.at-max]="cartQty(p.itemType, p.id) >= p.stock && p.stock > 0">
           <div class="pos-product-img">
-            <img *ngIf="p.images[0]" [src]="p.images[0]" [alt]="p.name">
-            <div *ngIf="!p.images[0]" class="pos-product-placeholder">
+            <img *ngIf="p.imageUrl" [src]="p.imageUrl" [alt]="p.name">
+            <div *ngIf="!p.imageUrl" class="pos-product-placeholder">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </div>
-            <span class="pos-in-cart-badge" *ngIf="cartQty(p.id) > 0">En carrito: {{ cartQty(p.id) }}</span>
+            <span class="pos-in-cart-badge" *ngIf="cartQty(p.itemType, p.id) > 0">En carrito: {{ cartQty(p.itemType, p.id) }}</span>
             <span class="pos-out-badge" *ngIf="p.stock === 0">Agotado</span>
+            <span class="pos-kit-badge" *ngIf="p.itemType === 'kit'">Kit</span>
           </div>
           <div class="pos-product-info">
             <span class="pos-product-name">{{ p.name }}</span>
             <span class="pos-product-sku">{{ p.sku }}</span>
-            <span class="pos-product-desc">{{ p.description || 'Sin descripción disponible' }}</span>
             <div class="pos-product-bottom">
               <span class="pos-product-price">${{ p.price | number:'1.2-2' }}</span>
               <span class="pos-stock-chip" [class.low]="p.stock > 0 && p.stock <= 5" [class.out]="p.stock === 0">
@@ -187,7 +191,7 @@
             <span class="qty-val">{{ item.qty }}</span>
             <button class="qty-btn" (click)="changeQty(item, 1)"
                     [disabled]="atMaxQty(item)"
-                    [title]="atMaxQty(item) ? 'Máximo: ' + stockOf(item.productId) + ' uds' : ''">+</button>
+                    [title]="atMaxQty(item) ? 'Máximo: ' + stockOfItem(item) + ' uds' : ''">+</button>
           </div>
           <span class="cart-item__price">${{ item.price * item.qty | number:'1.2-2' }}</span>
           <button class="cart-item__remove" (click)="removeFromCart(i)">

@@ -44,6 +44,45 @@
   ></dynamic-table>
 </div>
 
+<!-- ── Modal: Registrar pago ── -->
+<div class="modal-overlay payment-modal-overlay" *ngIf="showPaymentModal" (click)="closePaymentModal()">
+  <div class="modal" style="max-width:440px" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h3>Registrar pago</h3>
+      <button class="btn-close" (click)="closePaymentModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+      <div class="pm-field">
+        <label>Monto <span class="req">*</span></label>
+        <div class="pm-input-prefix">
+          <span>$</span>
+          <input type="number" [(ngModel)]="paymentForm.amount" min="0.01" step="0.01"
+                 placeholder="0.00">
+        </div>
+        <span class="pm-hint" *ngIf="selectedOrder">Máx. ${{ (selectedOrder.amountPending ?? 0) | number:'1.2-2' }}</span>
+      </div>
+      <div class="pm-field">
+        <label>Método <span class="req">*</span></label>
+        <select [(ngModel)]="paymentForm.method">
+          <option *ngFor="let m of paymentMethods" [value]="m.value">{{ m.label }}</option>
+        </select>
+      </div>
+      <div class="pm-field">
+        <label>Notas</label>
+        <input type="text" [(ngModel)]="paymentForm.notes" placeholder="Referencia, número de transferencia, etc.">
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn-cancel" (click)="closePaymentModal()">Cancelar</button>
+      <button class="btn-save" (click)="savePayment()" [disabled]="!paymentForm.amount || savingPayment">
+        {{ savingPayment ? 'Guardando…' : 'Registrar pago' }}
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Order Detail Modal -->
 <div class="modal-overlay" *ngIf="selectedOrder" (click)="closeDetail()">
   <div class="order-modal" (click)="$event.stopPropagation()">
@@ -111,6 +150,9 @@
             <div class="order-item-info">
               <span class="oi-name">{{ item.name }}</span>
               <span class="oi-sku">{{ item.sku }}</span>
+              <span *ngIf="item.batchCode" class="item-batch-chip">
+                Lote: {{ item.batchCode }}
+              </span>
             </div>
             <span class="oi-qty">× {{ item.qty }}</span>
             <span class="oi-price">${{ item.price * item.qty | number:'1.2-2' }}</span>
@@ -122,15 +164,45 @@
           <div class="oie-row" *ngFor="let item of editItems; let i = index">
             <div class="oie-info">
               <span class="oie-name">{{ item.name }}</span>
-              <div class="oie-price-wrap">
-                <span class="oie-price-prefix">$</span>
-                <input class="oie-price-input" type="number" [(ngModel)]="item.price" min="0" step="0.01">
+              <div class="oie-pricing-row">
+                <!-- Precio -->
+                <div class="oie-price-wrap">
+                  <span class="oie-price-prefix">$</span>
+                  <input class="oie-price-input" type="number" [(ngModel)]="item.price"
+                         (ngModelChange)="onItemPriceChange(i)" min="0" step="0.01">
+                </div>
+                <!-- Descuento % -->
+                <div class="oie-disc-wrap" [class.oie-disc-wrap--active]="item.discountPct > 0">
+                  <input class="oie-disc-input" type="number" [(ngModel)]="item.discountPct"
+                         (ngModelChange)="onItemDiscountChange(i)" min="0" max="100" step="1" placeholder="0">
+                  <span class="oie-disc-suffix">%</span>
+                </div>
+                <span class="oie-orig-price" *ngIf="item.discountPct > 0">
+                  ${{ item.originalPrice | number:'1.2-2' }}
+                </span>
+              </div>
+              <!-- Lote (PEPS) -->
+              <div class="oie-batch-row" *ngIf="item.productId && productBatches[item.productId]">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                <select class="oie-batch-select"
+                        [ngModel]="item.batchId ?? null"
+                        (ngModelChange)="setItemBatch(i, $event)">
+                  <option [ngValue]="null">— Sin lote —</option>
+                  <option *ngFor="let b of productBatches[item.productId]"
+                          [ngValue]="b.id">
+                    {{ b.code }}{{ b.supplierName ? ' · ' + b.supplierName : '' }}
+                    {{ b.unitCost ? ' · $' + b.unitCost.toFixed(2) : '' }}
+                    ({{ b.entryDate }})
+                  </option>
+                </select>
               </div>
             </div>
             <div class="oie-controls">
               <button class="oie-btn" (click)="changeQty(i, -1)">−</button>
               <span class="oie-qty">{{ item.qty }}</span>
-              <button class="oie-btn" (click)="changeQty(i, 1)">+</button>
+              <button class="oie-btn" (click)="changeQty(i, 1)"
+                      [disabled]="item.qty >= stockForEdit(item)"
+                      [title]="item.qty >= stockForEdit(item) ? 'Stock máximo: ' + stockForEdit(item) : ''">+</button>
               <button class="oie-remove" (click)="removeFromEdit(i)" title="Quitar">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -181,6 +253,49 @@
         <div class="ot-row" *ngIf="selectedOrder.discount > 0"><span>Descuento</span><span class="ot-discount">−${{ selectedOrder.discount | number:'1.2-2' }}</span></div>
         <div class="ot-row" *ngIf="selectedOrder.shipping > 0"><span>Envío</span><span>${{ selectedOrder.shipping | number:'1.2-2' }}</span></div>
         <div class="ot-row ot-row--total"><span>Total</span><span>${{ selectedOrder.total | number:'1.2-2' }}</span></div>
+      </div>
+
+      <!-- ── Pagos ── -->
+      <div class="order-block">
+        <div class="order-block__head">
+          <h4>Pagos</h4>
+          <button class="btn-add-payment" *ngIf="canAddPayment()" (click)="openAddPayment()">
+            + Registrar pago
+          </button>
+        </div>
+
+        <!-- Payment status summary -->
+        <div class="payment-status-bar">
+          <div class="psb-item">
+            <span class="psb-label">Total</span>
+            <span class="psb-value">${{ selectedOrder.total | number:'1.2-2' }}</span>
+          </div>
+          <div class="psb-item">
+            <span class="psb-label">Pagado</span>
+            <span class="psb-value psb-paid">${{ (selectedOrder.amountPaid ?? 0) | number:'1.2-2' }}</span>
+          </div>
+          <div class="psb-item">
+            <span class="psb-label">Pendiente</span>
+            <span class="psb-value psb-pending">${{ (selectedOrder.amountPending ?? 0) | number:'1.2-2' }}</span>
+          </div>
+          <span class="payment-status-pill" [ngClass]="'psp--' + (selectedOrder.paymentStatus ?? 'unpaid')">
+            {{ selectedOrder.paymentStatus === 'paid' ? 'Pagado' : selectedOrder.paymentStatus === 'partial' ? 'Parcial' : 'Sin pago' }}
+          </span>
+        </div>
+
+        <!-- Payment history -->
+        <div class="payment-list" *ngIf="selectedOrder.payments?.length">
+          <div class="payment-row" *ngFor="let p of selectedOrder.payments">
+            <div class="payment-row__info">
+              <span class="pr-method">{{ p.method }}</span>
+              <span class="pr-notes" *ngIf="p.notes">{{ p.notes }}</span>
+              <span class="pr-date">{{ p.recordedAt.substring(0,10) }}</span>
+              <span class="pr-by">por {{ p.recordedByName }}</span>
+            </div>
+            <span class="pr-amount">${{ p.amount | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <p class="no-payments" *ngIf="!selectedOrder.payments?.length">Sin pagos registrados</p>
       </div>
 
       <div class="order-ticket-share">
